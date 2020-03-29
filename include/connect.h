@@ -26,37 +26,37 @@
 //         }
 //     }
 // }
-void Print_Available_Networks(WiFiClient& client)
+String Print_Available_Networks()
 {
-    String network_list;
+    String website;
     int n = WiFi.scanNetworks();
     if (n == 0) {
-        client.println("no networks found");
+        website += "no networks found";
     } else {
-        client.println(
+        website +=
             R"(
-                <form method="post">
-                <p>Wybierz siec:</p>)");
+                <form method="POST">
+                <p>Wybierz siec:</p>)";
         for (int i = 0; i < n; ++i) {
             // Print SSID and RSSI for each network found
-            client.println( R"(<input type="radio" name="AP_Name" value=")");
-            client.println(  WiFi.SSID(i));
-            client.println( R"(">)");
-            client.println( WiFi.SSID(i));
-            client.println( R"(<br>)");
+            website += R"(<input type="radio" name="AP_Name" value=")";
+            website +=  WiFi.SSID(i);
+            website += R"(">)";
+            website += WiFi.SSID(i);
+            website += R"(<br>)";
         }
-        client.println(
+        website +=
             R"(
                 <br>
-                <label for="psw"><b>Password</b></label> 
-                <input type="password" placeholder="Enter Password"
+                <label for="psw"><b>Haslo</b></label> 
+                <input type="password" placeholder="Wpisz haslo"
                        name="psw"> <br>
-                <input type="submit" name="Save!" value="Zapisz">
+                <input type="submit" name="Save" value="Zapisz">
                 <br><br>
-                <input type="submit" name="Scan!" value="Skanuj">
                 </form>
-                )");
+                )";
     }
+    return website;
 }
 
 

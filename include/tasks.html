@@ -1,27 +1,20 @@
 
 R"(
-<!-- <link rel="stylesheet" type="text/css" href="http://www.phpform.org/formbuilder/colors/color1/view.css" media="all"> -->
-<style>
 
-</style>
-<form method="GET">
+<form method="POST">
     <p>Dodaj zadanie:</p>
-    <label class="description" for="element_4">Czas: </label> </br>
-		<span>
-			<input id="task_hour" name="task_hour" class="element text " size="2" type="text" maxlength="2" value=""/> 
-			<label for="task_hour">HH</label>
-		</span>
-		<span>
-			<input id="task_minute" name="task_minute" class="element text " size="2" type="text" maxlength="2" value=""/> 
-			<label>MM</label>
-        </span>
-        <br><br>
+    <label class="description" for="element_4">Kiedy pierwsze zadzialanie?</label> <br>
+	<input id="task_date" name="task_date" min="%1$s" value="%1$s" type="datetime-local" > 
+    <br><br>
+    <label for="interval">Co ile dni?</label><br>
+    <input name="interval" type="number" min="1" value = "1">
+    <br>
     <label for="task_duration">Czas trwania [s]:</label><br /> 
-    <input name="task_duration">
+    <input name="task_duration" type="number" min="1" value="1">
     <br><br>
     <label for="task_volume">Ilosc wody [L]:</label><br /> 
-    <input name="task_volume">
+    <input name="task_volume" type="number" min="0" step="0.1" value="0.0">
     <br><br>
-    <button name="Add_Task">Dodaj!</button>
+    <button class="button name="Add_Task">Dodaj!</button>
 </form>
 )"
