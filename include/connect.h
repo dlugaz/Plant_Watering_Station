@@ -51,7 +51,7 @@ String Print_Available_Networks()
                 <label for="psw"><b>Haslo</b></label> 
                 <input type="password" placeholder="Wpisz haslo"
                        name="psw"> <br>
-                <input type="submit" name="Save" value="Zapisz">
+                <button class="button" type="submit" name="Save">Zapisz</button>
                 <br><br>
                 </form>
                 )";
