@@ -44,7 +44,7 @@ void setup()
     //Start status LED
     Serial.println("Creating status led task");
     xTaskCreate(Status_LED_function,"status_LED_task",1000,&Status_LED_frequency_ms,0,&status_LED_task);
-    Status_LED_frequency_ms = 500;
+    Status_LED_frequency_ms = 200;
     //read settings from non volatile memory 
     Serial.println("Retrieving settings from memory");
     preferences.begin("settings");
@@ -108,13 +108,15 @@ void setup()
     Serial.println("Setup done");
 }
 
-
+long elapsed_time = 0;
 void loop()
 {    
+  
     if(digitalRead(START_BUTTON)==0&& current_status.start_button == false)
     {
       Serial.println("Button pressed");
       current_status.start_button = true;
+      current_status.watering_on = !current_status.watering_on;
       current_status.start_button_time_ms = millis();
     }
     if(digitalRead(START_BUTTON)==1&& current_status.start_button == true)
@@ -123,18 +125,19 @@ void loop()
       current_status.start_button = false;
       current_status.start_button_time_ms = 0;
     }
-
-    if(current_status.start_button_time_ms > 10000)
+    elapsed_time = millis() - current_status.start_button_time_ms;
+    if(digitalRead(START_BUTTON)==0&&(elapsed_time > 10000))
     {
       preferences.clear();
       Serial.println("Memory has been reset");
+      elapsed_time = 0;
     }
     
     // logic 
-    if(current_status.watering_on || current_status.start_button)
+    if(current_status.watering_on )
     {
       current_status.pump_on = true;
-      analogWrite(PUMP_PWM_CHANNEL,current_status.pump_speed,100);
+      analogWrite(PUMP_PWM_CHANNEL,map(current_status.pump_speed,0,100,170,255),255);
     }else
     {
        current_status.pump_on = false;

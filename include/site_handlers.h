@@ -16,10 +16,10 @@ struct Process
   bool watering_on = false;
   bool pump_on = false;
   bool tasks_on = true;
-  int pump_speed = 0;
+  int pump_speed = 100;
   bool start_button = false;
   Watering_Task tasks_array[20];
-  uint16_t start_button_time_ms;
+  int start_button_time_ms;
 }current_status;
 
 
@@ -96,10 +96,13 @@ void handle_Networks()
     preferences.putString(key_wifi_name,configuration.Wifi_Station_Name);
     preferences.putString(key_wifi_password,configuration.Wifi_Station_Password);
   }
-  if(webServer.hasArg("disconnect"))
+  if(webServer.hasArg("connect"))
   {
-    WiFi.disconnect();
+    if(!configuration.Wifi_Station_Name.isEmpty()){
+      esp_restart();
+   }
   }
+
     if(webServer.hasArg("forget"))
   {
     configuration.Wifi_Station_Name = "";
@@ -107,19 +110,23 @@ void handle_Networks()
     preferences.putString(key_wifi_name,configuration.Wifi_Station_Name);
     preferences.putString(key_wifi_password,configuration.Wifi_Station_Password);
   }
-  
+  if(WiFi.isConnected())
+      site_body += "Polaczono z " + WiFi.SSID() + "<br>";
   char dynamic_part [1024] = {0};
 
   snprintf(dynamic_part,sizeof(dynamic_part),
   R"(
-  Obecna siec: %s <br>
+  Obecna zapamietana siec: %s <br>
   <form method="POST">
-  <button class="button" type="submit" name="disconnect">Rozlacz</button><br>
-  <button class="button type="submit" name="forget">Zapomnij</button><br>
+  %s
   <button class="button type="submit" name="Scan">Skanuj</button>
   </form>
   )"
-  ,WiFi.SSID().c_str());
+  ,configuration.Wifi_Station_Name.c_str()
+  ,!configuration.Wifi_Station_Name.isEmpty()?R"(
+  <button class="button" type="submit" name="connect">Polacz</button><br>
+  <button class="button type="submit" name="forget">Zapomnij</button><br>
+  )":"");
 
   site_body += dynamic_part;
 

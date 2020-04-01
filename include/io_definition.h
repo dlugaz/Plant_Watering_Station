@@ -17,8 +17,8 @@
       #define PUMP_PWM_CHANNEL     0
       // use 13 bit precission for LEDC timer
       #define PWM_TIMER_13_BIT  13
-      // use 5000 Hz as a LEDC base frequency
-      #define PWM_BASE_FREQ     5000
+      // LEDC base frequency
+      #define PWM_BASE_FREQ     25000
 
       ledcSetup(PUMP_PWM_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_13_BIT);
       ledcAttachPin(PUMP1_PIN, PUMP_PWM_CHANNEL);
