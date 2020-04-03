@@ -22,6 +22,9 @@ struct Process
   float water_flow_L_per_sec;
 } current_status;
 
+/** 
+ * Display / website and handle requests
+ */
 void handle_root()
 {
   String site_body;
@@ -30,6 +33,10 @@ void handle_root()
   site_body += Print_Main_Website_Footer();
   webServer.send(200, "text/html", site_body.c_str());
 }
+
+/** 
+ * Display /Control website and handle requests
+ */
 
 void handle_Control()
 {
@@ -57,6 +64,10 @@ void handle_Control()
   site_body += Print_Main_Website_Footer();
   webServer.send(200, "text/html", site_body.c_str());
 }
+
+/** 
+ * Display /Configure website and handle requests
+ */
 void handle_Configure()
 {
   Print_Received_Args();
@@ -64,6 +75,8 @@ void handle_Configure()
   {
     configuration.Tank_Volume = webServer.arg(0).toFloat();
     configuration.Tank_Height_cm = webServer.arg(1).toFloat();
+
+    save_settings();
   }
 
   String site_body;
@@ -76,6 +89,10 @@ void handle_Configure()
   site_body += Print_Main_Website_Footer();
   webServer.send(200, "text/html", site_body.c_str());
 }
+
+/** 
+ * Display /Networks website and handle requests
+ */
 void handle_Networks()
 {
   Print_Received_Args();
@@ -88,10 +105,8 @@ void handle_Networks()
     if (webServer.argName(1) == "psw")
       configuration.Wifi_Station_Password = webServer.arg(1);
     Serial.println("Saving WIFI settings");
-    preferences.clear();
-    preferences.putString(key_wifi_name, configuration.Wifi_Station_Name);
-    preferences.putString(key_wifi_password, configuration.Wifi_Station_Password);
-    preferences.putBytes(key_configuration_struct,&configuration,sizeof(configuration)+1);
+
+    save_settings();
   }
   if (webServer.hasArg("connect"))
   {
@@ -105,8 +120,8 @@ void handle_Networks()
   {
     configuration.Wifi_Station_Name = "";
     configuration.Wifi_Station_Password = "";
-    preferences.putString(key_wifi_name, configuration.Wifi_Station_Name);
-    preferences.putString(key_wifi_password, configuration.Wifi_Station_Password);
+
+    save_settings();
   }
   if (WiFi.isConnected())
     site_body += "Polaczono z " + WiFi.SSID() + "<br>";
@@ -139,6 +154,10 @@ void handle_Networks()
   site_body += Print_Main_Website_Footer();
   webServer.send(200, "text/html", site_body.c_str());
 }
+
+/** 
+ * Display /Tasks website and handle requests
+ */
 void handle_Tasks()
 {
   Print_Received_Args();
@@ -147,7 +166,7 @@ void handle_Tasks()
   site_body += Print_Main_Website_Header();
   tm time = {0};
   char date[40] = {0};
-
+  load_settings();
 
   if (webServer.hasArg("Add_Task"))
   {
@@ -160,8 +179,10 @@ void handle_Tasks()
         new_task->interval_days = webServer.arg(1).toInt();
         new_task->duration_seconds = webServer.arg(2).toInt();
         new_task->pump_power_percent = webServer.arg(3).toInt();
-        new_task->water_amount = webServer.arg(4).toInt();
+        new_task->water_amount = webServer.arg(4).toFloat();
         configuration.numberoftasks++;
+        
+        save_settings();
       }
       else
         site_body += "Nieprawidlowe dane";
@@ -170,54 +191,33 @@ void handle_Tasks()
     site_body += "Maksymalna ilosc zadan";
   }
 
-
   if (webServer.hasArg("Delete"))
   {
     int numberToDelete = webServer.arg(0).toInt();
-    for (size_t i = 0; i < configuration.tasks_array.size(); i++)
+    if (numberToDelete <= configuration.numberoftasks)
     {
-      if(i>=numberToDelete )
+      Serial.println(configuration.tasks_array.size());
+      for (size_t i = 0; i < configuration.tasks_array.size(); i++)
       {
-        if((i+1)<configuration.tasks_array.size())
-          configuration.tasks_array[i] = configuration.tasks_array[i+1];
-        else
-          configuration.tasks_array[i] = Watering_Task();
-
+        if (i >= numberToDelete)
+        {
+          if ((i + 1) < configuration.tasks_array.size())
+            configuration.tasks_array[i] = configuration.tasks_array[i + 1];
+          else
+            configuration.tasks_array[i] = Watering_Task();
+        }
       }
+
+      configuration.numberoftasks--;
+      if (configuration.numberoftasks < 0)
+        configuration.numberoftasks = 0;
+      save_settings();
     }
-    
-    configuration.numberoftasks--;
   }
+
   if (configuration.numberoftasks > 0)
   {
-    site_body +=
-        R"(
-            <form method="POST">
-            <p>Lista zadan</p>)";
-
-    for (int i = 0; i< configuration.numberoftasks;i++)
-    {
-      Watering_Task* task = &(configuration.tasks_array[i]); //make alias
-      // Print SSID and RSSI for each network found
-      site_body += R"(<input type="radio" name="Task_Num" value=")";
-      site_body += i;
-      site_body += R"(">)";
-      strftime(date, sizeof(date), "Start %Y/%m/%dT%H:%M ", &(task->start_time));
-      site_body += date;
-      site_body += "Interwal " + task->interval_days;
-      site_body += "Czas " + task->duration_seconds;
-      site_body += "Moc " + task->pump_power_percent;
-      site_body += "Objetosc ";
-      site_body += task->water_amount;
-      site_body += R"(<br>)";
-    }
-    site_body +=
-        R"(
-                <br>               
-                <button class="button" type="submit" name="Delete">Usun</button>
-                <br><br>
-                </form>
-                )";
+    site_body += Print_Tasks_List();
   }
 
 char dynamic_part[1024] = {0};

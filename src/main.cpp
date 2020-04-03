@@ -7,6 +7,7 @@
 #include <Preferences.h>
 #include <WebServer.h>
 #include <Ticker.h>
+#include <AsyncDelay.h>
 
 
 //My includes
@@ -73,10 +74,16 @@ void setup()
     //read settings from non volatile memory 
     Serial.println("Retrieving settings from memory");
     preferences.begin("settings");
-    configuration.Wifi_Station_Name = preferences.getString(key_wifi_name);
-    configuration.Wifi_Station_Password = preferences.getString(key_wifi_password);
+    // configuration.Wifi_Station_Name = preferences.getString(key_wifi_name);
+    // configuration.Wifi_Station_Password = preferences.getString(key_wifi_password);
+    // preferences.putBytes(key_configuration_struct,&configuration,sizeof(configuration));
+
+    // preferences.getBytes(key_configuration_struct,&configuration,sizeof(configuration));
+    load_settings();
+   
     Serial.println(configuration.Wifi_Station_Name);
     Serial.println(configuration.Wifi_Station_Password);
+    // Serial.println(configuration2.Wifi_Station_Name);
 
     if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty())
     {
@@ -135,18 +142,54 @@ void setup()
     Serial.println("Setup done");
 }
 
+AsyncDelay Pump_On_Timer;
+
 void loop()
 {    
 
     // logic 
     if(current_status.watering_on )
     {
+      Serial.println("Watering On");
       current_status.pump_on = true;
       analogWrite(PUMP_PWM_CHANNEL,map(current_status.pump_speed,0,100,170,255),255);
     }else
     {
+      Serial.println("Watering Off");
        current_status.pump_on = false;
       analogWrite(PUMP_PWM_CHANNEL,0);
+    }
+
+    if(current_status.tasks_on)
+    {
+      Serial.println("Tasks On");
+      tm current_time = {0};
+      getLocalTime(&current_time);
+      //check if any task is due
+      int due_task_number = configuration.tasks.isAnyTaskDue();
+      if (due_task_number)
+      {
+        Serial.println("Some task is due");
+        Serial.println(due_task_number);
+        //make alias for shorter name
+        Watering_Task due_task = configuration.tasks[due_task_number];
+        //start pump for configured time
+        if(!current_status.watering_on){
+          Serial.println("Starting Pumps and timer");
+          Serial.println(due_task.duration_seconds);
+          Pump_On_Timer.start(due_task.duration_seconds, AsyncDelay::units_t::MILLIS);
+          current_status.watering_on = true;
+          current_status.pump_speed = due_task.pump_power_percent;
+        }
+        //Task has been fulfiled
+        if (Pump_On_Timer.isExpired() && current_status.watering_on)
+        {
+          Serial.println("Task fulfilled");
+          current_status.watering_on = false;
+          due_task.start_time = current_time; //refresh last start time
+        }
+      }
+
     }
 
     //handle all timing tasks events
@@ -156,5 +199,5 @@ void loop()
     StartButton.update();
 
     
-    vTaskDelay(10);
+    vTaskDelay(1000);
 }
