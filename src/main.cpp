@@ -6,6 +6,7 @@
 #include "WiFi.h"
 #include <Preferences.h>
 #include <WebServer.h>
+#include <Ticker.h>
 
 
 //My includes
@@ -30,6 +31,30 @@ void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
   ledcWrite(channel, duty);
 }
 
+//schedule level measurement every 1000 ms
+void Tank_Level_Measurement_function()
+{
+  float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
+  current_status.water_level_L =  (configuration.Tank_Height_cm - (float)distanceToWater.ping_median())*L_per_cm;
+  Serial.print("Water level ");Serial.println(current_status.water_level_L);
+}
+Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000);
+
+//schedule water flow measurement every 5 second
+float last_water_level_L = 0.0; 
+void Tank_Flow_Measurement_function();
+Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,5000);
+
+void Tank_Flow_Measurement_function()
+{
+  //calculate time from last measurement
+  float time_s = (float)Tank_Flow_Measurement.elapsed()/1000.0f;
+  //calculate flow as difference in levels divided by time
+  if(last_water_level_L!=0.0) // discard first measurement
+    current_status.water_flow_L_per_sec = (last_water_level_L - current_status.water_level_L)/time_s;
+  //save water level for next iteration
+  last_water_level_L = current_status.water_level_L;
+}
 
 
 TaskHandle_t webServer_task;
@@ -37,7 +62,7 @@ TaskHandle_t status_LED_task;
 
 void setup()
 {
-    //Setup IO
+    //Setup Inputs and outputs
     setup_IO();
 
     Serial.begin(115200);
@@ -100,39 +125,19 @@ void setup()
 
     //end of configuration, change status led frequency
     Status_LED_frequency_ms = 1000;
-      
+    //Create webserver task
     Serial.println("Creating webserver task");
     xTaskCreate(webServer_function,"webServer_task",10000,NULL,0,&webServer_task);
-
+    //Start timing tasks
+    Tank_Flow_Measurement.start();
+    Tank_Level_Measurement.start();
     // Set WiFi to station mode and disconnect from an AP if it was previously connecte
     Serial.println("Setup done");
 }
 
-long elapsed_time = 0;
 void loop()
 {    
-  
-    if(digitalRead(START_BUTTON)==0&& current_status.start_button == false)
-    {
-      Serial.println("Button pressed");
-      current_status.start_button = true;
-      current_status.watering_on = !current_status.watering_on;
-      current_status.start_button_time_ms = millis();
-    }
-    if(digitalRead(START_BUTTON)==1&& current_status.start_button == true)
-    {
-      Serial.println("Button depressed");
-      current_status.start_button = false;
-      current_status.start_button_time_ms = 0;
-    }
-    elapsed_time = millis() - current_status.start_button_time_ms;
-    if(digitalRead(START_BUTTON)==0&&(elapsed_time > 10000))
-    {
-      preferences.clear();
-      Serial.println("Memory has been reset");
-      elapsed_time = 0;
-    }
-    
+
     // logic 
     if(current_status.watering_on )
     {
@@ -143,5 +148,13 @@ void loop()
        current_status.pump_on = false;
       analogWrite(PUMP_PWM_CHANNEL,0);
     }
+
+    //handle all timing tasks events
+    Tank_Level_Measurement.update();
+    Tank_Flow_Measurement.update();
+    //handle all buttons
+    StartButton.update();
+
+    
     vTaskDelay(10);
 }
