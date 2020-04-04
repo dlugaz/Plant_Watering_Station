@@ -14,7 +14,7 @@ struct Watering_Task
 
 class Watering_Tasks
 {
-  std::array<Watering_Task, 20> array;
+  std::array<Watering_Task, 4> array;
   int numberoftasks;
 
 public:
@@ -72,8 +72,9 @@ public:
       Serial.printf("time_ex %ld",time_ex);
       time_t time_cur = mktime(&current_time);
       Serial.printf("time_cur %ld",time_cur);
-
-      return difftime(time_ex,time_cur) >0;
+      double out = difftime(time_ex,time_cur);
+      Serial.println(out);
+      return (out <0.0);
     }
     return false;
   }

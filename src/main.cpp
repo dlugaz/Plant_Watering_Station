@@ -36,7 +36,12 @@ void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
 void Tank_Level_Measurement_function()
 {
   float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
-  current_status.water_level_L =  (configuration.Tank_Height_cm - (float)distanceToWater.ping_median())*L_per_cm;
+  unsigned long measurement = distanceToWater.ping_median();
+  Serial.println(measurement);
+  // measurement = NewPing::convert_cm(measurement);
+  float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
+  Serial.println(measured_distance);
+  current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
   Serial.print("Water level ");Serial.println(current_status.water_level_L);
 }
 Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000);
@@ -73,17 +78,7 @@ void setup()
     Status_LED_frequency_ms = 200;
     //read settings from non volatile memory 
     Serial.println("Retrieving settings from memory");
-    preferences.begin("settings");
-    // configuration.Wifi_Station_Name = preferences.getString(key_wifi_name);
-    // configuration.Wifi_Station_Password = preferences.getString(key_wifi_password);
-    // preferences.putBytes(key_configuration_struct,&configuration,sizeof(configuration));
-
-    // preferences.getBytes(key_configuration_struct,&configuration,sizeof(configuration));
     load_settings();
-   
-    Serial.println(configuration.Wifi_Station_Name);
-    Serial.println(configuration.Wifi_Station_Password);
-    // Serial.println(configuration2.Wifi_Station_Name);
 
     if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty())
     {
@@ -120,8 +115,6 @@ void setup()
     
       Serial.println("Starting WebServer");
 
-
-      //
       webServer.on("/",handle_root);
       webServer.on("/Control",handle_Control);
       webServer.on("/Configure",handle_Configure);
@@ -134,7 +127,7 @@ void setup()
     Status_LED_frequency_ms = 1000;
     //Create webserver task
     Serial.println("Creating webserver task");
-    xTaskCreate(webServer_function,"webServer_task",10000,NULL,0,&webServer_task);
+    xTaskCreate(webServer_function,"webServer_task",20000,NULL,0,&webServer_task);
     //Start timing tasks
     Tank_Flow_Measurement.start();
     Tank_Level_Measurement.start();
@@ -166,13 +159,13 @@ void loop()
       tm current_time = {0};
       getLocalTime(&current_time);
       //check if any task is due
-      int due_task_number = configuration.tasks.isAnyTaskDue();
+      int due_task_number = configuration.tasks_array.isAnyTaskDue();
       if (due_task_number)
       {
         Serial.println("Some task is due");
         Serial.println(due_task_number);
         //make alias for shorter name
-        Watering_Task due_task = configuration.tasks[due_task_number];
+        Watering_Task due_task = configuration.tasks_array[due_task_number];
         //start pump for configured time
         if(!current_status.watering_on){
           Serial.println("Starting Pumps and timer");

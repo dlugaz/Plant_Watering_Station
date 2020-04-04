@@ -8,7 +8,6 @@
 #include <time.h>
 
 WebServer webServer;
-Preferences preferences;
 #include "site_printers.h"
 #include "watering_task.h"
 
@@ -170,56 +169,33 @@ void handle_Tasks()
 
   if (webServer.hasArg("Add_Task"))
   {
-    if (configuration.numberoftasks < configuration.tasks_array.size())
-    {
       if (strptime(webServer.arg(0).c_str(), "%Y/%m/%dT%H:%M", &time) != NULL)
       {
-        Watering_Task *new_task = &(configuration.tasks_array[configuration.numberoftasks]);
-        new_task->start_time = time;
-        new_task->interval_days = webServer.arg(1).toInt();
-        new_task->duration_seconds = webServer.arg(2).toInt();
-        new_task->pump_power_percent = webServer.arg(3).toInt();
-        new_task->water_amount = webServer.arg(4).toFloat();
-        configuration.numberoftasks++;
-        
-        save_settings();
+        Watering_Task new_task;
+        new_task.start_time = time;
+        new_task.interval_days = webServer.arg(1).toInt();
+        new_task.duration_seconds = webServer.arg(2).toInt();
+        new_task.pump_power_percent = webServer.arg(3).toInt();
+        new_task.water_amount = webServer.arg(4).toFloat();
+        if(configuration.tasks_array.Add_Task(new_task))
+          save_settings();
+        else
+          site_body += "Maksymalna ilosc zadan";
       }
       else
         site_body += "Nieprawidlowe dane";
-    }
-    else
-    site_body += "Maksymalna ilosc zadan";
   }
+  
 
   if (webServer.hasArg("Delete"))
   {
     int numberToDelete = webServer.arg(0).toInt();
-    if (numberToDelete <= configuration.numberoftasks)
-    {
-      Serial.println(configuration.tasks_array.size());
-      for (size_t i = 0; i < configuration.tasks_array.size(); i++)
-      {
-        if (i >= numberToDelete)
-        {
-          if ((i + 1) < configuration.tasks_array.size())
-            configuration.tasks_array[i] = configuration.tasks_array[i + 1];
-          else
-            configuration.tasks_array[i] = Watering_Task();
-        }
-      }
-
-      configuration.numberoftasks--;
-      if (configuration.numberoftasks < 0)
-        configuration.numberoftasks = 0;
+    if (configuration.tasks_array.Delete_Task(numberToDelete))
       save_settings();
-    }
   }
-
-  if (configuration.numberoftasks > 0)
-  {
-    site_body += Print_Tasks_List();
-  }
-
+  
+  site_body += Print_Tasks_List();
+  
 char dynamic_part[1024] = {0};
 
 getLocalTime(&time);
