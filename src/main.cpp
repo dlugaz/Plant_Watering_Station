@@ -24,13 +24,6 @@ const char ntp_server[] = "pool.ntp.org";
 WiFiServer wifiServer;
 
 
-void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
-  // calculate duty, 8191 from 2 ^ 13 - 1
-  uint32_t duty = (8191 / valueMax) * min(value, valueMax);
-
-  // write duty to LEDC
-  ledcWrite(channel, duty);
-}
 
 //schedule level measurement every 1000 ms
 void Tank_Level_Measurement_function()
@@ -60,11 +53,11 @@ void Tank_Flow_Measurement_function()
     current_status.water_flow_L_per_sec = (last_water_level_L - current_status.water_level_L)/time_s;
   //save water level for next iteration
   last_water_level_L = current_status.water_level_L;
+  Serial.print("Flow");Serial.println(current_status.water_flow_L_per_sec);
 }
 
 
-TaskHandle_t webServer_task;
-TaskHandle_t status_LED_task;
+TaskHandle_t webServer_task, status_LED_task, logic_task;
 
 void setup()
 {
@@ -127,7 +120,11 @@ void setup()
     Status_LED_frequency_ms = 1000;
     //Create webserver task
     Serial.println("Creating webserver task");
-    xTaskCreate(webServer_function,"webServer_task",20000,NULL,0,&webServer_task);
+    xTaskCreate(webServer_function,"webServer_task",100000,NULL,0,&webServer_task);
+    //Create logic task
+    Serial.println("Creating logic task");
+    xTaskCreate(logic_function,"logic_task",10000,NULL,0,&logic_task);
+
     //Start timing tasks
     Tank_Flow_Measurement.start();
     Tank_Level_Measurement.start();
@@ -135,56 +132,9 @@ void setup()
     Serial.println("Setup done");
 }
 
-AsyncDelay Pump_On_Timer;
 
 void loop()
 {    
-
-    // logic 
-    if(current_status.watering_on )
-    {
-      Serial.println("Watering On");
-      current_status.pump_on = true;
-      analogWrite(PUMP_PWM_CHANNEL,map(current_status.pump_speed,0,100,170,255),255);
-    }else
-    {
-      Serial.println("Watering Off");
-       current_status.pump_on = false;
-      analogWrite(PUMP_PWM_CHANNEL,0);
-    }
-
-    if(current_status.tasks_on)
-    {
-      Serial.println("Tasks On");
-      tm current_time = {0};
-      getLocalTime(&current_time);
-      //check if any task is due
-      int due_task_number = configuration.tasks_array.isAnyTaskDue();
-      if (due_task_number)
-      {
-        Serial.println("Some task is due");
-        Serial.println(due_task_number);
-        //make alias for shorter name
-        Watering_Task due_task = configuration.tasks_array[due_task_number];
-        //start pump for configured time
-        if(!current_status.watering_on){
-          Serial.println("Starting Pumps and timer");
-          Serial.println(due_task.duration_seconds);
-          Pump_On_Timer.start(due_task.duration_seconds, AsyncDelay::units_t::MILLIS);
-          current_status.watering_on = true;
-          current_status.pump_speed = due_task.pump_power_percent;
-        }
-        //Task has been fulfiled
-        if (Pump_On_Timer.isExpired() && current_status.watering_on)
-        {
-          Serial.println("Task fulfilled");
-          current_status.watering_on = false;
-          due_task.start_time = current_time; //refresh last start time
-        }
-      }
-
-    }
-
     //handle all timing tasks events
     Tank_Level_Measurement.update();
     Tank_Flow_Measurement.update();
@@ -192,5 +142,5 @@ void loop()
     StartButton.update();
 
     
-    vTaskDelay(1000);
+    vTaskDelay(pdMS_TO_TICKS(100));
 }

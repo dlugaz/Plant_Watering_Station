@@ -73,8 +73,9 @@ public:
       time_t time_cur = mktime(&current_time);
       Serial.printf("time_cur %ld",time_cur);
       double out = difftime(time_ex,time_cur);
+      Serial.print("difftime says:");
       Serial.println(out);
-      return (out <0.0);
+      return (out < 0);
     }
     return false;
   }
@@ -87,11 +88,15 @@ public:
     }
     return 0;
   }
-  
-  Watering_Task& operator[](int index)
+  Watering_Task get_task(int index)
   {
     return array[index];
   }
+  
+  // Watering_Task& operator[](int index)
+  // {
+  //   return array[index];
+  // }
 
 };
 

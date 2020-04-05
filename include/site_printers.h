@@ -54,7 +54,7 @@ String Print_Tasks_List()
 
     for (int i = 0; i< configuration.tasks_array.Count();i++)
     {
-      Watering_Task task = configuration.tasks_array[i]; //make alias
+      Watering_Task task = configuration.tasks_array.get_task(i); //make alias
       tasks_body += R"(<input type="radio" name="Task_Num" value=")";
       tasks_body += i;
       tasks_body += R"(">)";
