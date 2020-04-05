@@ -70,12 +70,14 @@ void handle_Control()
 void handle_Configure()
 {
   Print_Received_Args();
+  Config configuration = settings.get_Config();
+
   if (webServer.hasArg("Save"))
   {
     configuration.Tank_Volume = webServer.arg(0).toFloat();
     configuration.Tank_Height_cm = webServer.arg(1).toFloat();
 
-    save_settings();
+    settings.save_settings();
   }
 
   String site_body;
@@ -95,6 +97,8 @@ void handle_Configure()
 void handle_Networks()
 {
   Print_Received_Args();
+  Config configuration = settings.get_Config();
+
   String site_body;
   site_body += Print_Main_Website_Header();
 
@@ -105,7 +109,7 @@ void handle_Networks()
       configuration.Wifi_Station_Password = webServer.arg(1);
     Serial.println("Saving WIFI settings");
 
-    save_settings();
+    settings.save_settings();
   }
   if (webServer.hasArg("connect"))
   {
@@ -120,7 +124,7 @@ void handle_Networks()
     configuration.Wifi_Station_Name = "";
     configuration.Wifi_Station_Password = "";
 
-    save_settings();
+    settings.save_settings();
   }
   if (WiFi.isConnected())
     site_body += "Polaczono z " + WiFi.SSID() + "<br>";
@@ -159,13 +163,15 @@ void handle_Networks()
  */
 void handle_Tasks()
 {
+  Config configuration = settings.get_Config();
+
   Print_Received_Args();
 
   String site_body;
   site_body += Print_Main_Website_Header();
   tm time = {0};
   char date[40] = {0};
-  load_settings();
+  settings.load_settings();
 
   if (webServer.hasArg("Add_Task"))
   {
@@ -177,10 +183,10 @@ void handle_Tasks()
         new_task.duration_seconds = webServer.arg(2).toInt();
         new_task.pump_power_percent = webServer.arg(3).toInt();
         new_task.water_amount = webServer.arg(4).toFloat();
-        if(configuration.tasks_array.Add_Task(new_task))
-          save_settings();
-        else
-          site_body += "Maksymalna ilosc zadan";
+        // if(configuration.tasks_array.Add_Task(new_task))
+        //   settings.save_settings();
+        // else
+        //   site_body += "Maksymalna ilosc zadan";
       }
       else
         site_body += "Nieprawidlowe dane";
@@ -190,8 +196,8 @@ void handle_Tasks()
   if (webServer.hasArg("Delete"))
   {
     int numberToDelete = webServer.arg(0).toInt();
-    if (configuration.tasks_array.Delete_Task(numberToDelete))
-      save_settings();
+    // if (configuration.tasks_array.Delete_Task(numberToDelete))
+    //   settings.save_settings();
   }
   
   site_body += Print_Tasks_List();

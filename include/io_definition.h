@@ -24,7 +24,7 @@ NewPing distanceToWater(LEVEL_TRIGGER_PIN, LEVEL_ECHO_PIN, MAX_DISTANCE);
 simplebutton::ButtonPullup StartButton(START_BUTTON_PIN);
 void Start_Button_Holding_function()
 {
-   reset_settings();
+   settings.reset_settings();
    Serial.println("Memory has been reset");
 }
 void Start_Button_Pressed_function()

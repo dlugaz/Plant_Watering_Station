@@ -13,25 +13,11 @@ const char key_configuration_struct[] = "ConfigStruct";
 const char key_tasks_array[] = "TasksArray";
 const char key_numberoftasks[] = "NumberOfTasks";
 const char key_success[] = "Success";
-const char filename[] = "/settings";
-const char CRC_filename[] = "/CRC";
-
-
-class Settings
-{
-    xSemaphoreHandle config_mutex;
-
-    Settings()
-    {
-        config_mutex = xSemaphoreCreateMutex(); 
-        if(config_mutex) xSemaphoreGive(config_mutex);
-    }
-};
-
+const char settings_filename[] = "/settings.txt";
+const char CRC_filename[] = "/CRC.txt";
+#include <mutex>
 struct Config
 {
-private:
-public:
     tm Last_Watering_Timestamp;
     IPAddress Device_Ip;
     float Tank_Volume;
@@ -39,93 +25,125 @@ public:
     float L_per_cm;
     String Wifi_Station_Name;
     String Wifi_Station_Password;
-    Watering_Tasks tasks_array;
-
-
-} configuration;
-int calc_crc8(const char *buffer, size_t len)
+    // Watering_Tasks tasks_array;
+}; 
+class Settings
 {
-    Serial.println("Calculating CRC");
-    long out = 0;
-    for (int i = 0; i < len; i++)
+    std::mutex mutex;
+    Config configuration;
+    int config_crc;
+
+public:
+    Config get_Config()
     {
-        out = (buffer[i] + out) % 255;
+        std::lock_guard<std::mutex> lock(mutex);
+        return configuration;
     }
-    Serial.println(out);
-    return out;
-}
-void load_settings()
-{
-    Serial.println("Load2");
-    try
+    void set_Config(Config value)
     {
-        if (!SPIFFS.begin(true))
-            throw "SPIFFS cannot be mounted";
-
-        File settings_file = SPIFFS.open(filename, FILE_READ);
-        if (!settings_file)
-            throw "Cannot open settings file";
-
-        uint8_t buffer[sizeof(Config)] = {0};
-
-        size_t read_bytes = settings_file.read(buffer, sizeof(buffer));
-        if (read_bytes != sizeof(buffer))
-            throw "Unsuccessful load";
-        int crc = calc_crc8((char *)buffer, sizeof(buffer));
-
-        memcpy(&configuration, buffer, sizeof(buffer));
-        settings_file.close();
-
-        Serial.println("Load successful");
-        Serial.println(read_bytes);
-
-        SPIFFS.end();
+        std::lock_guard<std::mutex> lock(mutex);
+        configuration = value;
     }
-    catch (const char *error)
+
+    uint8_t calc_crc8(const uint8_t *buffer, size_t len)
     {
-        Serial.println(error);
+        Serial.println("Calculating CRC");
+        uint8_t out = 0;
+        for (int i = 0; i < len; i++)
+        {
+            out = (buffer[i] + out) % 255;
+        }
+        Serial.println(out);
+        return out;
     }
-}
-void save_settings()
-{
-    Serial.println("Save2");
-    try
+    size_t calc_buffer_size()
     {
-        if (!SPIFFS.begin(true))
-            throw "SPIFFS cannot be mounted";
+        return (sizeof(Config)+sizeof(config_crc)+1);
+    }
+    void load_settings()
+    {
+        std::lock_guard<std::mutex> lock(mutex);
 
-        File settings_file = SPIFFS.open(filename, FILE_WRITE);
-        if (!settings_file)
-            throw "Cannot open settings file";
-        uint8_t buffer[sizeof(Config)] = {0};
-        memcpy(buffer, &configuration, sizeof(configuration));
-        size_t written_bytes = settings_file.write(buffer, sizeof(buffer));
-        if (written_bytes != sizeof(buffer))
-            throw "Unsuccessful save";
+        Serial.println("Load2");
+        try
+        {
+            if (!SPIFFS.begin(true))
+                throw "SPIFFS cannot be mounted";
 
-        int crc = calc_crc8((char *)buffer, sizeof(buffer));
-        settings_file.close();
+            File file = SPIFFS.open(settings_filename, FILE_READ);
+            if (!file)
+                throw "Cannot open settings file";
+            Serial.println(file.position());
 
-        Serial.println("Verification");
+            size_t file_size = file.size();
+            Serial.printf("Filesize %d should be %d \n",file_size,calc_buffer_size());
+            if(file_size<calc_buffer_size()) throw "Invalid file size";
+            uint8_t buffer[file_size] = {0};
+
+            size_t read_bytes = file.read(buffer, sizeof(buffer));
+            if (read_bytes != sizeof(buffer))
+                throw "Unsuccessful load";
+            int read_crc = buffer[sizeof(Config)];
+
+            int crc = calc_crc8(buffer, sizeof(Config));
+            if (read_crc != crc)
+                throw "Invalid CRC";
+
+            memcpy(&configuration, buffer, sizeof(buffer));
+            file.close();
+
+            Serial.println("Load successful");
+            Serial.println(read_bytes);
+
+            SPIFFS.end();
+        }
+        catch (const char *error)
+        {
+            Serial.println(error);
+        }
+    }
+    void save_settings()
+    {
+        Serial.println("Save2");
+        std::lock_guard<std::mutex> lock(mutex);
         Config backup = configuration;
-        load_settings();
-        Serial.println(backup.Wifi_Station_Name);
-        Serial.println(configuration.Wifi_Station_Name);
-        if (backup.Wifi_Station_Name != configuration.Wifi_Station_Name)
-            throw "data corrupted";
-        Serial.println("Save successful");
-        Serial.println(written_bytes);
+        File settings_file;
 
-        SPIFFS.end();
+        try
+        {
+            if (!SPIFFS.begin(true))
+                throw "SPIFFS cannot be mounted";
+
+            settings_file = SPIFFS.open(settings_filename, FILE_WRITE);
+            if (!settings_file)
+                throw "Cannot open settings file";
+
+            uint8_t buffer[calc_buffer_size()] = {0};
+            //put configuration info buffer
+            memcpy(buffer, &configuration, sizeof(Config));
+            //calculate crc
+            config_crc = calc_crc8(buffer, sizeof(Config));
+            //put crc into buffer
+            buffer [sizeof(Config)] = config_crc ;
+            size_t written_bytes = settings_file.write(buffer, sizeof(buffer));
+            if (written_bytes != sizeof(buffer))
+                throw "Unsuccessful save";
+
+            Serial.println("Save successful");
+            Serial.println(written_bytes);
+
+        }
+        catch (const char *error)
+        {
+            Serial.println(error);
+        }
+            if (!settings_file) settings_file.close();
+            SPIFFS.end();
+
     }
-    catch (const char *error)
+    void reset_settings()
     {
-        Serial.println(error);
+        SPIFFS.remove(settings_filename);
     }
-}
-void reset_settings()
-{
-    SPIFFS.remove(filename);
-}
-
+}settings;
 #endif // !INCLUDE_CONFIGURE_H

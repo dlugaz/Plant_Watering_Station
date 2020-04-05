@@ -28,6 +28,7 @@ WiFiServer wifiServer;
 //schedule level measurement every 1000 ms
 void Tank_Level_Measurement_function()
 {
+  Config configuration = settings.get_Config();
   float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
   unsigned long measurement = distanceToWater.ping_median();
   Serial.println(measurement);
@@ -71,7 +72,9 @@ void setup()
     Status_LED_frequency_ms = 200;
     //read settings from non volatile memory 
     Serial.println("Retrieving settings from memory");
-    load_settings();
+    settings.load_settings();
+
+    Config configuration = settings.get_Config();
 
     if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty())
     {
