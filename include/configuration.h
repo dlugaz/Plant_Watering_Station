@@ -1,7 +1,7 @@
 #ifndef INCLUDED_CONFIGURATION_H
 #define INCLUDED_CONFIGURATION_H
 #include "watering_task.h"
-#include <SPIFFS.h>
+#include <Preferences.h>
 
 const char key_tank_volume[] = "TankVolume";
 const char key_tank_Height[] = "TankHeight";
@@ -12,11 +12,12 @@ const char key_device_ip[] = "DeviceIp";
 const char key_configuration_struct[] = "ConfigStruct";
 const char key_tasks_array[] = "TasksArray";
 const char key_numberoftasks[] = "NumberOfTasks";
-const char key_success[] = "Success";
+const char key_crc[] = "crc";
+const char key_settings[] = "settings";
 const char settings_filename[] = "/settings.txt";
 const char CRC_filename[] = "/CRC.txt";
 #include <mutex>
-struct Config
+ struct Config
 {
     tm Last_Watering_Timestamp;
     IPAddress Device_Ip;
@@ -25,29 +26,33 @@ struct Config
     float L_per_cm;
     String Wifi_Station_Name;
     String Wifi_Station_Password;
-    // Watering_Tasks tasks_array;
+    Watering_Tasks tasks_array;
 }; 
 class Settings
 {
     std::mutex mutex;
     Config configuration;
     int config_crc;
+    Preferences memory_access;
 
 public:
-    Config get_Config()
+
+    Config get_Config() 
     {
         std::lock_guard<std::mutex> lock(mutex);
+        // Serial.println("Get Config");
         return configuration;
     }
-    void set_Config(Config value)
+    void set_Config(Config value) 
     {
         std::lock_guard<std::mutex> lock(mutex);
+        // Serial.println("Set Config");
         configuration = value;
     }
 
     uint8_t calc_crc8(const uint8_t *buffer, size_t len)
     {
-        Serial.println("Calculating CRC");
+        Serial.print("Calculating CRC ");
         uint8_t out = 0;
         for (int i = 0; i < len; i++)
         {
@@ -58,92 +63,80 @@ public:
     }
     size_t calc_buffer_size()
     {
-        return (sizeof(Config)+sizeof(config_crc)+1);
+        return (sizeof(Config)+1);
     }
-    void load_settings()
+    void load_settings() 
     {
         std::lock_guard<std::mutex> lock(mutex);
 
-        Serial.println("Load2");
+        Serial.println("Load");
         try
         {
-            if (!SPIFFS.begin(true))
-                throw "SPIFFS cannot be mounted";
+            if(!memory_access.begin(key_settings))throw "Unable to access memory";
 
-            File file = SPIFFS.open(settings_filename, FILE_READ);
-            if (!file)
-                throw "Cannot open settings file";
-            Serial.println(file.position());
+            uint8_t buffer[calc_buffer_size()] = {0};
+            size_t read_bytes = memory_access.getBytes(key_configuration_struct,&buffer,sizeof(buffer));
+            Serial.printf("Read bytes %d \n",read_bytes);
+            if(read_bytes != sizeof(buffer)) throw "Invalid bytes read";
+            
+            int read_crc = memory_access.getUInt(key_crc);
+            int crc = calc_crc8(buffer, sizeof(buffer));
+            Serial.printf("Read CRC %d \n",read_crc);
+            if (read_crc != crc) throw "Invalid CRC";
 
-            size_t file_size = file.size();
-            Serial.printf("Filesize %d should be %d \n",file_size,calc_buffer_size());
-            if(file_size<calc_buffer_size()) throw "Invalid file size";
-            uint8_t buffer[file_size] = {0};
-
-            size_t read_bytes = file.read(buffer, sizeof(buffer));
-            if (read_bytes != sizeof(buffer))
-                throw "Unsuccessful load";
-            int read_crc = buffer[sizeof(Config)];
-
-            int crc = calc_crc8(buffer, sizeof(Config));
-            if (read_crc != crc)
-                throw "Invalid CRC";
-
-            memcpy(&configuration, buffer, sizeof(buffer));
-            file.close();
-
+            memcpy(&configuration, buffer, sizeof(Config));
+           
             Serial.println("Load successful");
-            Serial.println(read_bytes);
 
-            SPIFFS.end();
         }
+
         catch (const char *error)
         {
             Serial.println(error);
         }
+        memory_access.end();
     }
-    void save_settings()
+    void save_settings (Config value)
     {
-        Serial.println("Save2");
+        set_Config(value);
+        save_settings();
+    }
+    void save_settings() 
+    {
+        Serial.println("Save");
         std::lock_guard<std::mutex> lock(mutex);
         Config backup = configuration;
-        File settings_file;
 
         try
         {
-            if (!SPIFFS.begin(true))
-                throw "SPIFFS cannot be mounted";
-
-            settings_file = SPIFFS.open(settings_filename, FILE_WRITE);
-            if (!settings_file)
-                throw "Cannot open settings file";
+            if(!memory_access.begin(key_settings))throw "Unable to access memory";
 
             uint8_t buffer[calc_buffer_size()] = {0};
             //put configuration info buffer
             memcpy(buffer, &configuration, sizeof(Config));
             //calculate crc
-            config_crc = calc_crc8(buffer, sizeof(Config));
-            //put crc into buffer
-            buffer [sizeof(Config)] = config_crc ;
-            size_t written_bytes = settings_file.write(buffer, sizeof(buffer));
-            if (written_bytes != sizeof(buffer))
-                throw "Unsuccessful save";
+            config_crc = calc_crc8(buffer, sizeof(buffer));
 
+            size_t written_bytes = memory_access.putBytes(key_configuration_struct,buffer,sizeof(buffer));
+            Serial.printf("Written bytes %d \n",written_bytes);
+
+            if(written_bytes!=sizeof(buffer)) throw "Invalid written bytes";
+
+            memory_access.putUInt(key_crc,config_crc);
             Serial.println("Save successful");
-            Serial.println(written_bytes);
 
         }
         catch (const char *error)
         {
             Serial.println(error);
         }
-            if (!settings_file) settings_file.close();
-            SPIFFS.end();
+            memory_access.end();
 
     }
-    void reset_settings()
+    void reset_settings() 
     {
-        SPIFFS.remove(settings_filename);
+        memory_access.clear();
     }
-}settings;
+};
+ Settings settings;
 #endif // !INCLUDE_CONFIGURE_H

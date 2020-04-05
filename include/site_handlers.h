@@ -11,7 +11,7 @@ WebServer webServer;
 #include "site_printers.h"
 #include "watering_task.h"
 
-struct Process
+volatile struct Process
 {
   bool watering_on = false;
   bool pump_on = false;
@@ -19,6 +19,8 @@ struct Process
   int pump_speed = 100;
   float water_level_L;
   float water_flow_L_per_sec;
+  float water_pumped;
+  float water_amount_when_started;
 } current_status;
 
 /** 
@@ -77,7 +79,7 @@ void handle_Configure()
     configuration.Tank_Volume = webServer.arg(0).toFloat();
     configuration.Tank_Height_cm = webServer.arg(1).toFloat();
 
-    settings.save_settings();
+    settings.save_settings(configuration);
   }
 
   String site_body;
@@ -109,7 +111,7 @@ void handle_Networks()
       configuration.Wifi_Station_Password = webServer.arg(1);
     Serial.println("Saving WIFI settings");
 
-    settings.save_settings();
+    settings.save_settings(configuration);
   }
   if (webServer.hasArg("connect"))
   {
@@ -124,7 +126,7 @@ void handle_Networks()
     configuration.Wifi_Station_Name = "";
     configuration.Wifi_Station_Password = "";
 
-    settings.save_settings();
+    settings.save_settings(configuration);
   }
   if (WiFi.isConnected())
     site_body += "Polaczono z " + WiFi.SSID() + "<br>";
@@ -183,10 +185,10 @@ void handle_Tasks()
         new_task.duration_seconds = webServer.arg(2).toInt();
         new_task.pump_power_percent = webServer.arg(3).toInt();
         new_task.water_amount = webServer.arg(4).toFloat();
-        // if(configuration.tasks_array.Add_Task(new_task))
-        //   settings.save_settings();
-        // else
-        //   site_body += "Maksymalna ilosc zadan";
+        if(configuration.tasks_array.Add_Task(new_task))
+          settings.save_settings(configuration);
+        else
+          site_body += "Maksymalna ilosc zadan";
       }
       else
         site_body += "Nieprawidlowe dane";
@@ -196,8 +198,8 @@ void handle_Tasks()
   if (webServer.hasArg("Delete"))
   {
     int numberToDelete = webServer.arg(0).toInt();
-    // if (configuration.tasks_array.Delete_Task(numberToDelete))
-    //   settings.save_settings();
+    if (configuration.tasks_array.Delete_Task(numberToDelete))
+      settings.save_settings(configuration);
   }
   
   site_body += Print_Tasks_List();

@@ -31,30 +31,36 @@ void Tank_Level_Measurement_function()
   Config configuration = settings.get_Config();
   float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
   unsigned long measurement = distanceToWater.ping_median();
-  Serial.println(measurement);
+  // Serial.println(measurement);
   // measurement = NewPing::convert_cm(measurement);
   float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
-  Serial.println(measured_distance);
+  // Serial.println(measured_distance);
   current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
-  Serial.print("Water level ");Serial.println(current_status.water_level_L);
+  Serial.printf("Water level %f \n",current_status.water_level_L);
 }
-Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000);
+Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
 
 //schedule water flow measurement every 5 second
 float last_water_level_L = 0.0; 
 void Tank_Flow_Measurement_function();
-Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,5000);
+Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,5000,0,MILLIS);
 
+long time_of_last_flow_measurement = 0;
 void Tank_Flow_Measurement_function()
 {
+  // Serial.printf("Tank_Flow: last %f, cur %f \n",last_water_level_L,current_status.water_level_L);
   //calculate time from last measurement
-  float time_s = (float)Tank_Flow_Measurement.elapsed()/1000.0f;
+  uint32_t elapsed = millis() - time_of_last_flow_measurement;
+  // Serial.printf("elapsed time %d", elapsed);
+  float time_s = (float)elapsed/1000.0f;
+  // Serial.printf("Flow time %f \n",time_s);
   //calculate flow as difference in levels divided by time
   if(last_water_level_L!=0.0) // discard first measurement
     current_status.water_flow_L_per_sec = (last_water_level_L - current_status.water_level_L)/time_s;
   //save water level for next iteration
   last_water_level_L = current_status.water_level_L;
-  Serial.print("Flow");Serial.println(current_status.water_flow_L_per_sec);
+  Serial.print("Flow ");Serial.println(current_status.water_flow_L_per_sec);
+  time_of_last_flow_measurement = millis();
 }
 
 

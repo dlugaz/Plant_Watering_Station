@@ -14,7 +14,7 @@ struct Watering_Task
 
 class Watering_Tasks
 {
-  std::array<Watering_Task, 4> array;
+  std::array<Watering_Task, 20> array;
   int numberoftasks;
 
 public:
@@ -61,7 +61,7 @@ public:
 
   bool isTaskDue(int task_number)
   {
-    Serial.print("isTaskDue ");Serial.println(task_number);
+    // Serial.print("isTaskDue ");Serial.println(task_number);
     if(task_number<numberoftasks)
     {
       tm current_time = {0};
@@ -69,13 +69,15 @@ public:
       tm execution_time = array[task_number].start_time;
       execution_time.tm_mday = execution_time.tm_mday + array[task_number].interval_days;
       time_t time_ex = mktime(&execution_time);
-      Serial.printf("time_ex %ld",time_ex);
+      // Serial.printf("time_ex %ld ",time_ex);
       time_t time_cur = mktime(&current_time);
-      Serial.printf("time_cur %ld",time_cur);
-      double out = difftime(time_ex,time_cur);
-      Serial.print("difftime says:");
-      Serial.println(out);
-      return (out < 0);
+      // Serial.printf("time_cur %ld ",time_cur);
+      // double out = difftime(time_ex,time_cur);
+      // Serial.print(" difftime says:");
+      // Serial.println(out);
+      bool isdue = (time_cur>time_ex);
+      // Serial.printf("Is due %d \n",isdue);
+      return isdue;
     }
     return false;
   }
@@ -84,19 +86,23 @@ public:
   {
     for(int i=0;i<numberoftasks;i++)
     {
-      if(isTaskDue(i)) return i;
+      if(isTaskDue(i)) 
+      {
+        Serial.printf("Task is due %d",i);
+        return i;
+      }
     }
-    return 0;
+    return -1;
   }
   Watering_Task get_task(int index)
   {
     return array[index];
   }
   
-  // Watering_Task& operator[](int index)
-  // {
-  //   return array[index];
-  // }
+  Watering_Task& operator[](int index)
+  {
+    return array[index];
+  }
 
 };
 
