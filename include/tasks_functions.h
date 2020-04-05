@@ -28,7 +28,6 @@ AsyncDelay Pump_On_Timer;
 
 void logic_function(void *parameter)
 {
-    float water_amount_when_started_task = current_status.water_level_L;
     Config configuration;
     while (true)
     {
@@ -40,7 +39,7 @@ void logic_function(void *parameter)
             Serial.println("Watering On");
             current_status.pump_on = true;
             analogWrite(PUMP_PWM_CHANNEL, map(current_status.pump_speed, 0, 100, 170, 255), 255);
-            current_status.water_pumped = water_amount_when_started_task - current_status.water_level_L;
+            current_status.water_pumped = current_status.water_amount_when_started - current_status.water_level_L;
             Serial.printf("Pumped water %f \n", current_status.water_pumped);
         }
         else
@@ -72,7 +71,6 @@ void logic_function(void *parameter)
                     Serial.println(due_task.duration_seconds);
                     if(due_task.duration_seconds!=0)
                         Pump_On_Timer.start(due_task.duration_seconds*1000, AsyncDelay::units_t::MILLIS);
-                    water_amount_when_started_task = current_status.water_level_L;
                     current_status.watering_on = true;
                     current_status.pump_speed = due_task.pump_power_percent;
                 }

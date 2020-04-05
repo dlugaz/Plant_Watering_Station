@@ -59,7 +59,13 @@ void handle_Control()
   site_body += Print_Main_Website_Header();
   snprintf(dynamic_part, sizeof(dynamic_part),
 #include <control.html>
-           , current_status.watering_on ? "false" : "true", current_status.watering_on ? "Zalaczone" : "Wylaczone", current_status.pump_speed, current_status.tasks_on ? "false" : "true", current_status.tasks_on ? "Zalaczone" : "Wylaczone");
+  , current_status.watering_on ? "false" : "true",
+   current_status.watering_on ? "Zalaczone" : "Wylaczone",
+    current_status.pump_speed, current_status.tasks_on ? "false" : "true"
+  , current_status.tasks_on ? "Zalaczone" : "Wylaczone"
+  ,current_status.water_level_L
+  ,current_status.water_pumped
+  ,current_status.water_flow_L_per_sec);
 
   site_body += dynamic_part;
   site_body += Print_Main_Website_Footer();

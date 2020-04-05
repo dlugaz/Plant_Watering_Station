@@ -1,13 +1,19 @@
 R"ABC(
 <form method="POST">
-    <p> Podlewanie wymuszone </p>
+    <p> Status Pompy </p>
     <button class="button type="submit" name="Water" value="%s">%s</button><br>
     <label for="Pump_Power">Moc Pompy [0-100%%]</label><br>
     <input onchange="this.form.submit()" name="Pump_Power" type="number" min="0" max="100" value="%d">
-    <br><br>
+    <br>
 </form>
 <form method="POST">
     <p> Wykonywanie zadan: </p>
     <button class="button type="submit" name="Tasks" value="%s">%s</button><br>
 </form>
+<br>
+<meta http-equiv="refresh" content="10" />
+Poziom w zbiorniku [l] %.1f<br>
+Przepompowano wody [l] %.1f<br>
+Przeplyw wody [l/s] %.1f<br>
+
 )ABC"
