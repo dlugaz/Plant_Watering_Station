@@ -4,9 +4,10 @@
 #include "site_handlers.h"
 #include "io_definition.h"
 
+bool webServer_run = true;
 void webServer_function(void *parameter)
 {
-    while (true)
+    while (webServer_run)
     {
         webServer.handleClient();
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -15,21 +16,26 @@ void webServer_function(void *parameter)
 
 uint16_t Status_LED_frequency_ms = 1000;
 
+bool Status_LED_run = true;
 void Status_LED_function(void *parameter)
 {
-
-    while (true)
+    while (Status_LED_run)
     {
             digitalWrite(LED, !digitalRead(LED));
             vTaskDelay(pdMS_TO_TICKS(Status_LED_frequency_ms));
     }
 }
-AsyncDelay Pump_On_Timer;
 
+bool logic_run = true;
 void logic_function(void *parameter)
 {
     Config configuration;
-    while (true)
+    AsyncDelay Pump_On_Timer;
+
+    int pump_speed_ramp = 0;
+    const int pump_ramp_slope = 10;
+
+    while (logic_run)
     {
         Config configuration = settings.get_Config();
 
@@ -38,7 +44,11 @@ void logic_function(void *parameter)
         {
             Serial.println("Watering On");
             current_status.pump_on = true;
-            analogWrite(PUMP_PWM_CHANNEL, map(current_status.pump_speed, 0, 100, 170, 255), 255);
+            
+            if(pump_speed_ramp < current_status.pump_speed) pump_speed_ramp += pump_ramp_slope;
+            if(pump_speed_ramp > current_status.pump_speed) pump_speed_ramp = current_status.pump_speed;
+
+            analogWrite(PUMP_PWM_CHANNEL, map(pump_speed_ramp, 0, 100, 170, 255), 255);
             current_status.water_pumped = current_status.water_amount_when_started - current_status.water_level_L;
             Serial.printf("Pumped water %f \n", current_status.water_pumped);
         }
@@ -47,6 +57,8 @@ void logic_function(void *parameter)
             Serial.println("Watering Off");
             current_status.pump_on = false;
             current_status.water_amount_when_started = current_status.water_level_L;
+            current_status.water_pumped = 0;
+            pump_speed_ramp = 0;
             analogWrite(PUMP_PWM_CHANNEL, 0);
         }
 

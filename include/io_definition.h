@@ -9,7 +9,7 @@
 #define PUMP1_PIN 4
 #define LED 2
 #define LEVEL_ECHO_PIN 18
-#define LEVEL_TRIGGER_PIN LEVEL_ECHO_PIN
+#define LEVEL_TRIGGER_PIN 19  
 #define MAX_DISTANCE 60
 void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255)
 {

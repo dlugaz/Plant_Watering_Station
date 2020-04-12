@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include <WebServer.h>
 #include <time.h>
+#include <Update.h>
 
 WebServer webServer;
 #include "site_printers.h"
@@ -18,7 +19,7 @@ volatile struct Process
   bool tasks_on = true;
   int pump_speed = 100;
   float water_level_L;
-  float water_flow_L_per_sec;
+  float water_flow_L_per_min;
   float water_pumped;
   float water_amount_when_started;
 } current_status;
@@ -65,7 +66,7 @@ void handle_Control()
   , current_status.tasks_on ? "Zalaczone" : "Wylaczone"
   ,current_status.water_level_L
   ,current_status.water_pumped
-  ,current_status.water_flow_L_per_sec);
+  ,current_status.water_flow_L_per_min);
 
   site_body += dynamic_part;
   site_body += Print_Main_Website_Footer();
@@ -222,6 +223,79 @@ snprintf(dynamic_part, sizeof(dynamic_part),
 site_body += dynamic_part;
 site_body += Print_Main_Website_Footer();
 webServer.send(200, "text/html", site_body.c_str());
+}
+
+const char* updateSite = 
+"<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+"<form method='POST' action='/Upload' enctype='multipart/form-data' id='upload_form'>"
+   "<input type='file' name='update'>"
+        "<input type='submit' value='Update'>"
+    "</form>"
+ "<div id='prg'>progress: 0%</div>"
+ "<script>"
+  "$('form').submit(function(e){"
+  "e.preventDefault();"
+  "var form = $('#upload_form')[0];"
+  "var data = new FormData(form);"
+  " $.ajax({"
+  "url: '/Upload',"
+  "type: 'POST',"
+  "data: data,"
+  "contentType: false,"
+  "processData:false,"
+  "xhr: function() {"
+  "var xhr = new window.XMLHttpRequest();"
+  "xhr.upload.addEventListener('progress', function(evt) {"
+  "if (evt.lengthComputable) {"
+  "var per = evt.loaded / evt.total;"
+  "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
+  "}"
+  "}, false);"
+  "return xhr;"
+  "},"
+  "success:function(d, s) {"
+  "console.log('success!')" 
+ "},"
+ "error: function (a, b, c) {"
+ "}"
+ "});"
+ "});"
+ "</script>";
+
+const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
+void handle_Update()
+{
+    webServer.send(200, "text/html", updateSite);
+}
+void handle_Upload_GET()
+{
+    webServer.sendHeader("Connection", "close");
+    webServer.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart();
+}
+
+void handle_Upload_POST()
+{
+      HTTPUpload& upload = webServer.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+      Serial.printf("Update: %s\n", upload.filename.c_str());
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { //start with max available size
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+      Serial.println("Flashing firmware..");
+      /* flashing firmware to ESP*/
+      if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+        Update.printError(Serial);
+      }
+    } else if (upload.status == UPLOAD_FILE_END) {
+      if (Update.end(true)) { //true to set the size to the current progress
+        Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+
 }
 
 #endif // !INCLUDED_SITE_HANDLERS_H

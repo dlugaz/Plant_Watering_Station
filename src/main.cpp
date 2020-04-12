@@ -8,6 +8,7 @@
 #include <WebServer.h>
 #include <Ticker.h>
 #include <AsyncDelay.h>
+#include <RunningAverage.h>
 
 
 //My includes
@@ -25,7 +26,9 @@ WiFiServer wifiServer;
 
 
 
-//schedule level measurement every 1000 ms
+//schedule level measurement
+
+RunningAverage Tank_Level_Average (5);
 void Tank_Level_Measurement_function()
 {
   Config configuration = settings.get_Config();
@@ -35,7 +38,10 @@ void Tank_Level_Measurement_function()
   // measurement = NewPing::convert_cm(measurement);
   float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
   // Serial.println(measured_distance);
-  current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
+  // current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
+  Tank_Level_Average.addValue((configuration.Tank_Height_cm - measured_distance)*L_per_cm);
+  current_status.water_level_L =  Tank_Level_Average.getAverage();
+
   Serial.printf("Water level %f \n",current_status.water_level_L);
 }
 Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
@@ -43,7 +49,7 @@ Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
 //schedule water flow measurement every 5 second
 float last_water_level_L = 0.0; 
 void Tank_Flow_Measurement_function();
-Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,5000,0,MILLIS);
+Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,10000,0,MILLIS);
 
 long time_of_last_flow_measurement = 0;
 void Tank_Flow_Measurement_function()
@@ -56,10 +62,10 @@ void Tank_Flow_Measurement_function()
   // Serial.printf("Flow time %f \n",time_s);
   //calculate flow as difference in levels divided by time
   if(last_water_level_L!=0.0) // discard first measurement
-    current_status.water_flow_L_per_sec = (last_water_level_L - current_status.water_level_L)/time_s;
+    current_status.water_flow_L_per_min = (last_water_level_L - current_status.water_level_L)*(60.0f/time_s);
   //save water level for next iteration
   last_water_level_L = current_status.water_level_L;
-  Serial.print("Flow ");Serial.println(current_status.water_flow_L_per_sec);
+  Serial.print("Flow ");Serial.println(current_status.water_flow_L_per_min);
   time_of_last_flow_measurement = millis();
 }
 
@@ -122,6 +128,8 @@ void setup()
       webServer.on("/Configure",handle_Configure);
       webServer.on("/Networks",handle_Networks);
       webServer.on("/Tasks",handle_Tasks);
+      webServer.on("/Update",handle_Update);
+      webServer.on("/Upload",HTTP_POST,handle_Upload_GET,handle_Upload_POST);
 
       webServer.begin(80);
 
