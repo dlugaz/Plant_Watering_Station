@@ -91,12 +91,18 @@ void logic_function(void *parameter)
                 if (
                     ((Pump_On_Timer.isExpired() || 
                     (due_task.water_amount!=0 &&(current_status.water_pumped > due_task.water_amount))) && current_status.watering_on)
-                    || !current_status.watering_on)
+                    )
                 {
                     Serial.println("Task fulfilled");
                     current_status.watering_on = false;
                     // due_task.start_time = current_time; //refresh last start time
-                    configuration.tasks_array[due_task_number].start_time = current_time;
+                    // calculate new start time
+                    tm new_time = due_task.start_time;
+                    new_time.tm_mday += due_task.interval_days;
+                    time_t temp = mktime(&new_time);
+                    tm* new_time_ptr = localtime(&temp);
+
+                    configuration.tasks_array[due_task_number].start_time = *(new_time_ptr);
                     settings.save_settings(configuration);
                 }
             }

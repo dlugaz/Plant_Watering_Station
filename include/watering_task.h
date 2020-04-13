@@ -67,7 +67,7 @@ public:
       tm current_time = {0};
       getLocalTime(&current_time);
       tm execution_time = array[task_number].start_time;
-      execution_time.tm_mday = execution_time.tm_mday + array[task_number].interval_days;
+      execution_time.tm_mday = execution_time.tm_mday;
       time_t time_ex = mktime(&execution_time);
       // Serial.printf("time_ex %ld ",time_ex);
       time_t time_cur = mktime(&current_time);
