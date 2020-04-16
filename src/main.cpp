@@ -9,7 +9,7 @@
 #include <Ticker.h>
 #include <AsyncDelay.h>
 #include <RunningAverage.h>
-
+#include <ESPmDNS.h>
 
 //My includes
 #include "configuration.h"
@@ -22,7 +22,10 @@
 const char AP_Name[] = "Plant_Watering_Station";
 const char ntp_server[] = "pool.ntp.org";
 
+const char hostname[] = "watering";
+
 WiFiServer wifiServer;
+MDNSResponder mDNSresponder;
 
 
 
@@ -88,6 +91,8 @@ void setup()
 
     Config configuration = settings.get_Config();
 
+    if(WiFi.setHostname(hostname))Serial.printf("Set hostname to %s \n",hostname);
+
     if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty())
     {
       Serial.println("Connecting to saved network:");
@@ -132,6 +137,11 @@ void setup()
       webServer.on("/Upload",HTTP_POST,handle_Upload_GET,handle_Upload_POST);
 
       webServer.begin(80);
+    //
+    Serial.printf("Starting mDNS with hostname: %s\n",hostname);
+    if(!mDNSresponder.begin(hostname))Serial.println("Failed starting mdnsresponder");
+        // Add service to MDNS-SD
+    MDNS.addService("_http", "_tcp", 80);
 
     //end of configuration, change status led frequency
     Status_LED_frequency_ms = 1000;

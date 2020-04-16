@@ -184,7 +184,8 @@ void handle_Tasks()
 
   if (webServer.hasArg("Add_Task"))
   {
-      if (strptime(webServer.arg(0).c_str(), "%Y/%m/%dT%H:%M", &time) != NULL)
+      if (strptime(webServer.arg(0).c_str(), "%Y/%m/%dT%H:%M", &time) != NULL
+      ||strptime(webServer.arg(0).c_str(), "%Y-%m-%dT%H:%M", &time) != NULL)
       {
         Watering_Task new_task;
         new_task.start_time = time;
