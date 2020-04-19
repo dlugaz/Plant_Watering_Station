@@ -26,8 +26,9 @@ void Start_Button_Holding_function()
 {
    settings.reset_settings();
    Serial.println("Memory has been reset");
+   esp_restart();
 }
-void Start_Button_Pressed_function()
+void Start_Button_Released_function()
 {
    Serial.println("Button pressed");
    current_status.watering_on = !current_status.watering_on;
@@ -55,7 +56,7 @@ void setup_IO()
 
    //Attach events to button
    StartButton.setOnHolding(Start_Button_Holding_function, 10000);
-   StartButton.setOnPushed(Start_Button_Pressed_function);
+   StartButton.setOnReleased(Start_Button_Released_function);
 }
 
 #endif // !INCLUDED_IO_DEFINITION_H

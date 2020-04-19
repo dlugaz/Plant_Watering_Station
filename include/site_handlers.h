@@ -18,6 +18,7 @@ volatile struct Process
   bool pump_on = false;
   bool tasks_on = true;
   int pump_speed = 100;
+  int pump_on_time_s = 0;
   float water_level_L;
   float water_flow_L_per_min;
   float water_pumped;
@@ -66,7 +67,8 @@ void handle_Control()
   , current_status.tasks_on ? "Zalaczone" : "Wylaczone"
   ,current_status.water_level_L
   ,current_status.water_pumped
-  ,current_status.water_flow_L_per_min);
+  ,current_status.water_flow_L_per_min
+  ,current_status.pump_on_time_s);
 
   site_body += dynamic_part;
   site_body += Print_Main_Website_Footer();

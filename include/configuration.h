@@ -135,7 +135,9 @@ public:
     }
     void reset_settings() 
     {
+        memory_access.begin(key_settings);
         memory_access.clear();
+        memory_access.end();
     }
 };
  Settings settings;

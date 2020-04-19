@@ -28,68 +28,13 @@ WiFiServer wifiServer;
 MDNSResponder mDNSresponder;
 
 
-
-//schedule level measurement
-
-RunningAverage Tank_Level_Average (5);
-void Tank_Level_Measurement_function()
+void setup_Connectivity()
 {
-  Config configuration = settings.get_Config();
-  float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
-  unsigned long measurement = distanceToWater.ping_median();
-  // Serial.println(measurement);
-  // measurement = NewPing::convert_cm(measurement);
-  float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
-  // Serial.println(measured_distance);
-  // current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
-  Tank_Level_Average.addValue((configuration.Tank_Height_cm - measured_distance)*L_per_cm);
-  current_status.water_level_L =  Tank_Level_Average.getAverage();
-
-  Serial.printf("Water level %f \n",current_status.water_level_L);
-}
-Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
-
-//schedule water flow measurement every 5 second
-float last_water_level_L = 0.0; 
-void Tank_Flow_Measurement_function();
-Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,10000,0,MILLIS);
-
-long time_of_last_flow_measurement = 0;
-void Tank_Flow_Measurement_function()
-{
-  // Serial.printf("Tank_Flow: last %f, cur %f \n",last_water_level_L,current_status.water_level_L);
-  //calculate time from last measurement
-  uint32_t elapsed = millis() - time_of_last_flow_measurement;
-  // Serial.printf("elapsed time %d", elapsed);
-  float time_s = (float)elapsed/1000.0f;
-  // Serial.printf("Flow time %f \n",time_s);
-  //calculate flow as difference in levels divided by time
-  if(last_water_level_L!=0.0) // discard first measurement
-    current_status.water_flow_L_per_min = (last_water_level_L - current_status.water_level_L)*(60.0f/time_s);
-  //save water level for next iteration
-  last_water_level_L = current_status.water_level_L;
-  Serial.print("Flow ");Serial.println(current_status.water_flow_L_per_min);
-  time_of_last_flow_measurement = millis();
-}
-
-
-TaskHandle_t webServer_task, status_LED_task, logic_task;
-
-void setup()
-{
-    //Setup Inputs and outputs
-    setup_IO();
-
-    Serial.begin(115200);
-    //Start status LED
-    Serial.println("Creating status led task");
-    xTaskCreate(Status_LED_function,"status_LED_task",1000,&Status_LED_frequency_ms,0,&status_LED_task);
-    Status_LED_frequency_ms = 200;
-    //read settings from non volatile memory 
-    Serial.println("Retrieving settings from memory");
-    settings.load_settings();
+    if(WiFi.isConnected()) return; 
 
     Config configuration = settings.get_Config();
+
+    Status_LED_frequency_ms = 200;
 
     if(WiFi.setHostname(hostname))Serial.printf("Set hostname to %s \n",hostname);
 
@@ -117,7 +62,6 @@ void setup()
     {
       Serial.println("Couldnt connect to network, creating AP");
       if(WiFi.softAP(AP_Name)){
-        configuration.Wifi_Station_Name = AP_Name;
         Serial.print("AP name:");Serial.println(AP_Name);
         Serial.print("IP Address");Serial.println(WiFi.softAPIP().toString());
       }
@@ -125,7 +69,26 @@ void setup()
         Serial.println ("Couldnt create AP");
       }
     }
-    
+
+}
+
+TaskHandle_t webServer_task, status_LED_task, logic_task;
+
+void setup()
+{
+    //Setup Inputs and outputs
+    setup_IO();
+
+    Serial.begin(115200);
+    //Start status LED
+    Serial.println("Creating status led task");
+    xTaskCreate(Status_LED_function,"status_LED_task",1000,&Status_LED_frequency_ms,0,&status_LED_task);
+
+    //read settings from non volatile memory 
+    Serial.println("Retrieving settings from memory");
+    settings.load_settings();
+
+    setup_Connectivity();   
       Serial.println("Starting WebServer");
 
       webServer.on("/",handle_root);
@@ -152,9 +115,6 @@ void setup()
     Serial.println("Creating logic task");
     xTaskCreate(logic_function,"logic_task",10000,NULL,0,&logic_task);
 
-    //Start timing tasks
-    Tank_Flow_Measurement.start();
-    Tank_Level_Measurement.start();
     // Set WiFi to station mode and disconnect from an AP if it was previously connecte
     Serial.println("Setup done");
 }
@@ -162,12 +122,8 @@ void setup()
 
 void loop()
 {    
-    //handle all timing tasks events
-    Tank_Level_Measurement.update();
-    Tank_Flow_Measurement.update();
-    //handle all buttons
-    StartButton.update();
 
-    
-    vTaskDelay(pdMS_TO_TICKS(100));
+    checkConnectivity.update();
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }

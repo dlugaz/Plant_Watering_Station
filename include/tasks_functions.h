@@ -26,6 +26,65 @@ void Status_LED_function(void *parameter)
     }
 }
 
+
+//schedule level measurement
+
+RunningAverage Tank_Level_Average (5);
+void Tank_Level_Measurement_function()
+{
+  Config configuration = settings.get_Config();
+  float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
+  unsigned long measurement = distanceToWater.ping_median();
+  // Serial.println(measurement);
+  // measurement = NewPing::convert_cm(measurement);
+  float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
+  // Serial.println(measured_distance);
+  // current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
+  Tank_Level_Average.addValue((configuration.Tank_Height_cm - measured_distance)*L_per_cm);
+  current_status.water_level_L =  Tank_Level_Average.getAverage();
+
+  Serial.printf("Water level %f \n",current_status.water_level_L);
+}
+Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
+
+//schedule water flow measurement every 5 second
+float last_water_level_L = 0.0; 
+void Tank_Flow_Measurement_function();
+Ticker Tank_Flow_Measurement(Tank_Flow_Measurement_function,10000,0,MILLIS);
+
+long time_of_last_flow_measurement = 0;
+void Tank_Flow_Measurement_function()
+{
+  // Serial.printf("Tank_Flow: last %f, cur %f \n",last_water_level_L,current_status.water_level_L);
+  //calculate time from last measurement
+  uint32_t elapsed = millis() - time_of_last_flow_measurement;
+  // Serial.printf("elapsed time %d", elapsed);
+  float time_s = (float)elapsed/1000.0f;
+  // Serial.printf("Flow time %f \n",time_s);
+  //calculate flow as difference in levels divided by time
+  if(last_water_level_L!=0.0) // discard first measurement
+    current_status.water_flow_L_per_min = (last_water_level_L - current_status.water_level_L)*(60.0f/time_s);
+  //save water level for next iteration
+  last_water_level_L = current_status.water_level_L;
+  Serial.print("Flow ");Serial.println(current_status.water_flow_L_per_min);
+  time_of_last_flow_measurement = millis();
+}
+
+extern void setup_Connectivity();
+
+void checkConnectivity_function()
+{
+  Config configuration = settings.get_Config();
+  Serial.println("Checking connectivity");
+  Serial.printf("Mode %d Connected %d, WifiStationName %s isEmpty? %d \n",WiFi.getMode(),WiFi.isConnected(),configuration.Wifi_Station_Name.c_str(),configuration.Wifi_Station_Name.isEmpty());
+  if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty()
+  &&(WiFi.getMode() == WIFI_MODE_STA && !WiFi.isConnected()))
+    Status_LED_frequency_ms = 200;
+  else 
+    Status_LED_frequency_ms = 1000;
+}
+Ticker checkConnectivity(checkConnectivity_function,60000,0,MILLIS);
+
 bool logic_run = true;
 void logic_function(void *parameter)
 {
@@ -34,6 +93,12 @@ void logic_function(void *parameter)
 
     int pump_speed_ramp = 0;
     const int pump_ramp_slope = 10;
+    unsigned long pump_started_time = 0;
+
+    //Start timing tasks
+    Tank_Flow_Measurement.start();
+    Tank_Level_Measurement.start();
+    checkConnectivity.start();
 
     while (logic_run)
     {
@@ -50,7 +115,10 @@ void logic_function(void *parameter)
 
             analogWrite(PUMP_PWM_CHANNEL, map(pump_speed_ramp, 0, 100, 170, 255), 255);
             current_status.water_pumped = current_status.water_amount_when_started - current_status.water_level_L;
+            current_status.pump_on_time_s = (millis() - pump_started_time)/1000;
             Serial.printf("Pumped water %f \n", current_status.water_pumped);
+            Serial.printf("Pump on for %d s \n", current_status.pump_on_time_s);
+
         }
         else
         {
@@ -59,6 +127,7 @@ void logic_function(void *parameter)
             current_status.water_amount_when_started = current_status.water_level_L;
             current_status.water_pumped = 0;
             pump_speed_ramp = 0;
+            pump_started_time = millis();
             analogWrite(PUMP_PWM_CHANNEL, 0);
         }
 
@@ -107,6 +176,11 @@ void logic_function(void *parameter)
                 }
             }
         }
+        //handle all timing tasks events
+        Tank_Level_Measurement.update();
+        Tank_Flow_Measurement.update();
+        //handle all buttons
+        StartButton.update();
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
