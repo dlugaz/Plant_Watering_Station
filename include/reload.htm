@@ -1,0 +1,59 @@
+<head>
+    <meta charset="UTF-8">
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script>
+        function refresh() {
+            $.ajax({
+                type: 'get',
+                url: 'variable',
+                data: 'water_level;water_pumped;water_flow;pump_running_time;pump_speed_ramp;pump_status;task_status;pump_speed',
+                success: function (rcvd_data) {
+                    var rcvd_values = rcvd_data.split(';');
+                    $('#water_level').html(rcvd_values[0]);
+                    $('#water_pumped').html(rcvd_values[1]);
+                    $('#water_flow').html(rcvd_values[2])
+                    $('#pump_running_time').html(rcvd_values[3]);
+                    $('#pump_speed_ramp').html(rcvd_values[4]);
+                    $('#pump_status').html(rcvd_values[5]);
+                    $('#task_status').html(rcvd_values[6]);
+                    $('#pump_speed').html(rcvd_values[7]);
+                }
+            });
+        }
+        $(document).ready(
+            function () {
+                setInterval(refresh, 1000);
+            }
+        );
+
+    </script>
+
+</head>
+
+<body>
+    <div class="main">
+        <form method="POST">
+            <p> Status Pompy </p>
+            <button class="button" name="pump_status" id="pump_status"></button><br>
+            <p id="pump_speed_ramp"></p>
+            <div class=slidecontainer>
+                <label for="pump_speed>Moc Pompy [0-100%]</label><br>
+                <input onchange="this.form.submit()" name="pump_speed" id="pump_speed" type="range" min="0" max="100"
+                 class=slider>
+            </div>
+        </form>
+        <form method="POST">
+            <p> Wykonywanie zadan: </p>
+            <button class="button" name="Tasks" id="task_status"></button><br>
+        </form>
+        <br>
+
+        <div id="process_values">
+            Poziom w zbiorniku <span id="water_level">Ładowanie</span> [l]<br>
+            Przepompowano wody <span id="water_pumped">Ładowanie</span> [l]<br>
+            Przeplyw wody <span id="water_flow">Ładowanie</span> [l/min]<br>
+            Czas uruchomienia <span id="pump_running_time">Ładowanie</span> [s]<br>
+        </div>
+    </div>
+</body>

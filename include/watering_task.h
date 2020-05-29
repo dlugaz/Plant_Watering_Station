@@ -10,6 +10,16 @@ struct Watering_Task
   int duration_seconds;
   float water_amount;
   int pump_power_percent; //0-100%
+
+  void addIntervalToStartTime()
+  {
+    tm new_time = start_time;
+    new_time.tm_mday += interval_days;
+    time_t temp = mktime(&new_time);
+    tm *new_time_ptr = localtime(&temp);
+
+    start_time = *(new_time_ptr);
+  }
 };
 
 class Watering_Tasks
@@ -62,7 +72,7 @@ public:
   bool isTaskDue(int task_number)
   {
     // Serial.print("isTaskDue ");Serial.println(task_number);
-    if(task_number<numberoftasks)
+    if (task_number < numberoftasks)
     {
       tm current_time = {0};
       getLocalTime(&current_time);
@@ -75,7 +85,7 @@ public:
       // double out = difftime(time_ex,time_cur);
       // Serial.print(" difftime says:");
       // Serial.println(out);
-      bool isdue = (time_cur>time_ex);
+      bool isdue = (time_cur > time_ex);
       // Serial.printf("Is due %d \n",isdue);
       return isdue;
     }
@@ -84,11 +94,11 @@ public:
 
   int isAnyTaskDue()
   {
-    for(int i=0;i<numberoftasks;i++)
+    for (int i = 0; i < numberoftasks; i++)
     {
-      if(isTaskDue(i)) 
+      if (isTaskDue(i))
       {
-        Serial.printf("Task is due %d",i);
+        Serial.printf("Task is due %d", i);
         return i;
       }
     }
@@ -98,12 +108,11 @@ public:
   {
     return array[index];
   }
-  
-  Watering_Task& operator[](int index)
+
+  Watering_Task &operator[](int index)
   {
     return array[index];
   }
-
 };
 
 #endif // !INCLUDED_WATERING_TASK_H

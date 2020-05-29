@@ -17,7 +17,8 @@ volatile struct Process
   bool watering_on = false;
   bool pump_on = false;
   bool tasks_on = true;
-  int pump_speed = 100;
+  int pump_speed = 100;   //[%] pump current setpoint
+  int pump_speed_ramp = 0; //[%] pump current power
   int pump_on_time_s = 0;
   float water_level_L;
   float water_flow_L_per_min;
@@ -298,6 +299,55 @@ void handle_Upload_POST()
         Update.printError(Serial);
       }
     }
+
+}
+
+void handle_variable()
+{
+  char value [15] = {0};
+  String response;
+  if(webServer.hasArg("pump_speed"))
+  {
+    sprintf(value,"%d;",current_status.pump_speed);
+    response += value;
+  }
+  if(webServer.hasArg("pump_speed_ramp"))
+  {
+    sprintf(value,"%d;",current_status.pump_speed_ramp);
+    response += value;
+  }
+  if(webServer.hasArg("water_level"))
+  {
+    sprintf(value,"%.1f;",current_status.water_level_L);
+    response += value;
+  }
+  if(webServer.hasArg("water_pumped"))
+  {
+    sprintf(value,"%.1f;",current_status.water_pumped);
+    response += value;
+  }
+  if(webServer.hasArg("water_flow"))
+  {
+    sprintf(value,"%.1f;",current_status.water_flow_L_per_min);
+    response += value;
+  }
+  if(webServer.hasArg("pump_running_time"))
+  {
+    sprintf(value,"%d;",current_status.pump_on_time_s);
+    response += value;
+  }
+  if(webServer.hasArg("pump_status"))
+  {
+    sprintf(value,"%s;",current_status.watering_on?"Załączone":"Wyłączone");
+    response += value;
+  }
+  if(webServer.hasArg("task_status"))
+  {
+    sprintf(value,"%s;",current_status.tasks_on?"Załączone":"Wyłączone");
+    response += value;
+  }
+  //water_level;water_pumped;water_flow;pump_running_time;pump_speed_ramp;pump_status;task_status
+    webServer.send(200, "text/plain", response.c_str() );
 
 }
 

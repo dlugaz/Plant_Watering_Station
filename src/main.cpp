@@ -10,6 +10,8 @@
 #include <AsyncDelay.h>
 #include <RunningAverage.h>
 #include <ESPmDNS.h>
+#include <NetBIOS.h>
+#include <ESPAsyncWebServer.h>
 
 //My includes
 #include "configuration.h"
@@ -26,13 +28,12 @@ const char hostname[] = "watering";
 
 WiFiServer wifiServer;
 MDNSResponder mDNSresponder;
+NetBIOS netBIOSresponder;
 
 
-void setup_Connectivity()
+void setup_Connectivity(Config& configuration)
 {
     if(WiFi.isConnected()) return; 
-
-    Config configuration = settings.get_Config();
 
     Status_LED_frequency_ms = 200;
 
@@ -87,24 +88,31 @@ void setup()
     //read settings from non volatile memory 
     Serial.println("Retrieving settings from memory");
     settings.load_settings();
+    Config configuration = settings.get_Config();
 
-    setup_Connectivity();   
-      Serial.println("Starting WebServer");
+    //start WiFi
+    setup_Connectivity(configuration);
 
-      webServer.on("/",handle_root);
-      webServer.on("/Control",handle_Control);
-      webServer.on("/Configure",handle_Configure);
-      webServer.on("/Networks",handle_Networks);
-      webServer.on("/Tasks",handle_Tasks);
-      webServer.on("/Update",handle_Update);
-      webServer.on("/Upload",HTTP_POST,handle_Upload_GET,handle_Upload_POST);
+    //start Web Server
+    Serial.println("Starting WebServer");
 
-      webServer.begin(80);
-    //
-    Serial.printf("Starting mDNS with hostname: %s\n",hostname);
-    if(!mDNSresponder.begin(hostname))Serial.println("Failed starting mdnsresponder");
-        // Add service to MDNS-SD
+    webServer.on("/", handle_root);
+    webServer.on("/Control", handle_Control);
+    webServer.on("/Configure", handle_Configure);
+    webServer.on("/Networks", handle_Networks);
+    webServer.on("/Tasks", handle_Tasks);
+    webServer.on("/Update", handle_Update);
+    webServer.on("/Upload", HTTP_POST, handle_Upload_GET, handle_Upload_POST);
+    webServer.on("/variable", HTTP_POST, handle_variable);
+    webServer.begin(80);
+
+    //Start mDNS responder - to respond to Bonjour queries from Linux & MAC
+    Serial.printf("Starting mDNS with hostname: %s\n",configuration.hostname.c_str());
+    if(!mDNSresponder.begin(configuration.hostname.c_str()))Serial.println("Failed starting mdnsresponder");
+    // Add service to MDNS-SD
     MDNS.addService("_http", "_tcp", 80);
+    //Start NETBIOS responder - to respond to queries from Windows
+    netBIOSresponder.begin(configuration.hostname.c_str());
 
     //end of configuration, change status led frequency
     Status_LED_frequency_ms = 1000;

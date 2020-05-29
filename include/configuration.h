@@ -27,6 +27,7 @@ const char CRC_filename[] = "/CRC.txt";
     String Wifi_Station_Name;
     String Wifi_Station_Password;
     Watering_Tasks tasks_array;
+    String hostname;
 }; 
 class Settings
 {

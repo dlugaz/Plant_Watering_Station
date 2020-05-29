@@ -1,17 +1,21 @@
 R"ABC(
 <form method="POST">
     <p> Status Pompy </p>
-    <button class="button type="submit" name="Water" value="%s">%s</button><br>
+    <button class="button" type="submit" name="Water" value="%s">%s</button><br>
     <label for="Pump_Power">Moc Pompy [0-100%%]</label><br>
     <input onchange="this.form.submit()" name="Pump_Power" type="number" min="0" max="100" value="%d">
     <br>
 </form>
 <form method="POST">
     <p> Wykonywanie zadan: </p>
-    <button class="button type="submit" name="Tasks" value="%s">%s</button><br>
+    <button class="button" type="submit" name="Tasks" value="%s">%s</button><br>
 </form>
 <br>
-<meta http-equiv="refresh" content="10" />
+<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
+<script> 
+
+</script>
+<div id="process_values">
 Poziom w zbiorniku [l] %.1f<br>
 Przepompowano wody [l] %.1f<br>
 Przeplyw wody [l/min] %.1f<br>
