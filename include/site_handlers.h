@@ -4,11 +4,11 @@
 #include <Arduino.h>
 #include "WiFi.h"
 #include <Preferences.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 #include <time.h>
 #include <Update.h>
 
-WebServer webServer;
+AsyncWebServer webServer (80);
 #include "site_printers.h"
 #include "watering_task.h"
 
@@ -29,12 +29,13 @@ volatile struct Process
 /** 
  * Display / website and handle requests
  */
-void handle_root()
+ArRequestHandlerFunction handle_root()
 {
   String site_body;
   site_body += Print_Main_Website_Header();
   site_body += Print_Local_Time();
   site_body += Print_Main_Website_Footer();
+  webServer.
   webServer.send(200, "text/html", site_body.c_str());
 }
 

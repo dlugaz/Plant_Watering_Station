@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+<link rel="stylesheet" type="text/css" href="style.css">
+<script>
+  $("#control").click(function(){$("#content").load("control.html")})
+</script>
+
+</head>
+<body>
+
+<div class="sidenav">
+  <a href="#" onclick="$('#content').load('control.html')">Sterowanie</a>
+  <a href="/Configure" id="configure">Ustawienia</a>
+  <a href="/Tasks" id="tasks">Zadania</a>
+  <a href="/Networks">Sieci</a>
+</div>
+
+<div class="main">
+  <h2>Witaj w systemie podlewania kwiatkow!</h2>
+<hr/>
+
+</div>
+<div id="content">
+
+</div>
+   
+</body>
+</html>

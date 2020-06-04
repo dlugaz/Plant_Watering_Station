@@ -12,6 +12,7 @@
 #include <ESPmDNS.h>
 #include <NetBIOS.h>
 #include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
 
 //My includes
 #include "configuration.h"
@@ -23,13 +24,11 @@
 
 const char AP_Name[] = "Plant_Watering_Station";
 const char ntp_server[] = "pool.ntp.org";
-
 const char hostname[] = "watering";
 
 WiFiServer wifiServer;
 MDNSResponder mDNSresponder;
 NetBIOS netBIOSresponder;
-
 
 void setup_Connectivity(Config& configuration)
 {
@@ -74,7 +73,6 @@ void setup_Connectivity(Config& configuration)
 }
 
 TaskHandle_t webServer_task, status_LED_task, logic_task;
-
 void setup()
 {
     //Setup Inputs and outputs
@@ -95,8 +93,10 @@ void setup()
 
     //start Web Server
     Serial.println("Starting WebServer");
+  
+    webServer.serveStatic("/",SPIFFS,"/index.html"); //root
+    webServer.serveStatic("/filesystem",SPIFFS,"/"); //display filesystem
 
-    webServer.on("/", handle_root);
     webServer.on("/Control", handle_Control);
     webServer.on("/Configure", handle_Configure);
     webServer.on("/Networks", handle_Networks);
@@ -104,7 +104,7 @@ void setup()
     webServer.on("/Update", handle_Update);
     webServer.on("/Upload", HTTP_POST, handle_Upload_GET, handle_Upload_POST);
     webServer.on("/variable", HTTP_POST, handle_variable);
-    webServer.begin(80);
+    webServer.begin();
 
     //Start mDNS responder - to respond to Bonjour queries from Linux & MAC
     Serial.printf("Starting mDNS with hostname: %s\n",configuration.hostname.c_str());
