@@ -36,7 +36,7 @@ String Print_Available_Networks()
         website +=
             R"(
                 <form method="POST">
-                <p>Wybierz siec:</p>)";
+                <p>Wybierz sieć:</p>)";
         for (int i = 0; i < n; ++i) {
             // Print SSID and RSSI for each network found
             website += R"(<input type="radio" name="AP_Name" value=")";
@@ -48,8 +48,8 @@ String Print_Available_Networks()
         website +=
             R"(
                 <br>
-                <label for="psw"><b>Haslo</b></label> 
-                <input type="password" placeholder="Wpisz haslo"
+                <label for="psw"><b>Hasło </b></label> 
+                <input type="password" placeholder="Wpisz hasło"
                        name="psw"> <br>
                 <button class="button" type="submit" name="Save">Zapisz</button>
                 <br><br>

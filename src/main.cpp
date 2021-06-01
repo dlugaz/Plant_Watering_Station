@@ -10,6 +10,10 @@
 #include <AsyncDelay.h>
 #include <RunningAverage.h>
 #include <ESPmDNS.h>
+#include "SPI.h"
+#include "Wire.h"
+#include "Adafruit_VL53L0X.h"
+#include "Adafruit_seesaw.h"
 
 //My includes
 #include "configuration.h"
@@ -70,6 +74,62 @@ void setup_Connectivity()
       }
     }
 
+
+}
+#define SOIL_SENSOR1_ADDRESS 54U
+#define SOIL_SENSOR2_ADDRESS 55U
+
+Adafruit_seesaw setup_soil_sensor(uint8_t address)
+{
+  Serial.println("Soil sensor init");
+  Adafruit_seesaw sensor;
+  sensor.begin(address);
+  Serial.printf("Test soil sensor \nTemp: %f \nMoisture: %d \n ",sensor.getTemp(),sensor.touchRead(0));
+  return sensor;
+}
+
+#define WATER_LEVEL_SENSOR_ADDRESS 41U
+Adafruit_VL53L0X setup_water_level_sensor()
+{
+    //Initialize tank level sensor
+    Serial.println("Water Level Sensor Init");
+    Adafruit_VL53L0X sensor;
+    sensor.begin(WATER_LEVEL_SENSOR_ADDRESS);
+    Serial.printf("Test Distance : %d \n",sensor.readRange());
+    return sensor;
+}
+
+void setup_i2c()
+{
+  //Initialize I2C
+  Serial.println("I2C Initialization");
+  Wire.begin(I2C_SDA, I2C_SCL);
+
+  //Scan for connected devices
+  for (uint8_t i = 0; i < 127; i++)
+  {
+    Wire.beginTransmission(i);
+    uint8_t error = Wire.endTransmission();
+    if (error == 0)
+    {
+      Serial.printf("I2C Device found at address %d \n", i);
+      if (i == WATER_LEVEL_SENSOR_ADDRESS)
+      {
+        water_distance_sensor = setup_water_level_sensor();
+        water_distance_sensor_found = true;
+      }
+      if (i == SOIL_SENSOR1_ADDRESS)
+      {
+        soil_sensor1_found = true;
+        soil_sensor1 = setup_soil_sensor(SOIL_SENSOR1_ADDRESS);
+      }
+      if (i == SOIL_SENSOR2_ADDRESS)
+      {
+        soil_sensor2_found = true;
+        soil_sensor2 = setup_soil_sensor(SOIL_SENSOR2_ADDRESS);
+      }
+    }
+  }
 }
 
 TaskHandle_t webServer_task, status_LED_task, logic_task;
@@ -114,6 +174,8 @@ void setup()
     //Create logic task
     Serial.println("Creating logic task");
     xTaskCreate(logic_function,"logic_task",10000,NULL,0,&logic_task);
+    //I2C
+    setup_i2c();
 
     // Set WiFi to station mode and disconnect from an AP if it was previously connecte
     Serial.println("Setup done");

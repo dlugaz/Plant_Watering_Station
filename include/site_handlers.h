@@ -19,10 +19,14 @@ volatile struct Process
   bool tasks_on = true;
   int pump_speed = 100;
   int pump_on_time_s = 0;
-  float water_level_L;
-  float water_flow_L_per_min;
-  float water_pumped;
-  float water_amount_when_started;
+  double water_level_L;
+  double water_flow_L_per_min;
+  double water_pumped;
+  double water_amount_when_started;
+  double temperature_sensor1_C;
+  double moisture_sensor1_Percent;
+  double temperature_sensor2_C;
+  double moisture_sensor2_Percent;
 } current_status;
 
 /** 
@@ -68,7 +72,9 @@ void handle_Control()
   ,current_status.water_level_L
   ,current_status.water_pumped
   ,current_status.water_flow_L_per_min
-  ,current_status.pump_on_time_s);
+  ,current_status.pump_on_time_s
+  ,current_status.temperature_sensor1_C,current_status.moisture_sensor1_Percent
+  ,current_status.temperature_sensor2_C,current_status.moisture_sensor2_Percent);
 
   site_body += dynamic_part;
   site_body += Print_Main_Website_Footer();
@@ -85,8 +91,8 @@ void handle_Configure()
 
   if (webServer.hasArg("Save"))
   {
-    configuration.Tank_Volume = webServer.arg(0).toFloat();
-    configuration.Tank_Height_cm = webServer.arg(1).toFloat();
+    configuration.Tank_Volume = webServer.arg(0).toDouble();
+    configuration.Tank_Height_cm = webServer.arg(1).toDouble();
 
     settings.save_settings(configuration);
   }
@@ -194,7 +200,7 @@ void handle_Tasks()
         new_task.interval_days = webServer.arg(1).toInt();
         new_task.duration_seconds = webServer.arg(2).toInt();
         new_task.pump_power_percent = webServer.arg(3).toInt();
-        new_task.water_amount = webServer.arg(4).toFloat();
+        new_task.water_amount = webServer.arg(4).toDouble();
         if(configuration.tasks_array.Add_Task(new_task))
           settings.save_settings(configuration);
         else

@@ -26,25 +26,53 @@ void Status_LED_function(void *parameter)
     }
 }
 
+#define SOIL_DRY 300
+#define SOIL_MOIST 1100
 
+double moisture_calc(double readout)
+{
+    return ((readout- SOIL_DRY) /SOIL_MOIST)*100;
+}
+
+void Soil_Sensors_Measurement_Function()
+{
+    if(soil_sensor1_found)
+    {
+        current_status.temperature_sensor1_C = soil_sensor1.getTemp();
+        current_status.moisture_sensor1_Percent = moisture_calc(soil_sensor1.touchRead(0));
+        Serial.printf("soil sensor 1 \nTemp: %f \n Moisture: %f \n ",current_status.temperature_sensor1_C,current_status.moisture_sensor1_Percent);
+    }
+    if(soil_sensor2_found)
+    {
+        current_status.temperature_sensor2_C = soil_sensor2.getTemp();
+        current_status.moisture_sensor2_Percent = moisture_calc(soil_sensor2.touchRead(0));
+        Serial.printf("soil sensor 2 \nTemp: %f \n Moisture: %f \n ",current_status.temperature_sensor2_C,current_status.moisture_sensor2_Percent);
+
+    }
+}
+
+Ticker Soil_Measurement(Soil_Sensors_Measurement_Function,5000,0,MILLIS);
 //schedule level measurement
 
 RunningAverage Tank_Level_Average (5);
 void Tank_Level_Measurement_function()
 {
-  Config configuration = settings.get_Config();
-  float L_per_cm = ((float)configuration.Tank_Volume/(float)configuration.Tank_Height_cm);
-  unsigned long measurement = distanceToWater.ping_median();
-  // Serial.println(measurement);
-  // measurement = NewPing::convert_cm(measurement);
-  float measured_distance = (float)measurement / US_ROUNDTRIP_CM;
-  // Serial.println(measured_distance);
-  // current_status.water_level_L =  (configuration.Tank_Height_cm - measured_distance)*L_per_cm;
-  Tank_Level_Average.addValue((configuration.Tank_Height_cm - measured_distance)*L_per_cm);
-  current_status.water_level_L =  Tank_Level_Average.getAverage();
+    if (water_distance_sensor_found)
+    {
+        Config configuration = settings.get_Config();
+        double L_per_cm = ((double)configuration.Tank_Volume / (double)configuration.Tank_Height_cm);
 
-  Serial.printf("Water level %f \n",current_status.water_level_L);
+        double measurement_cm = water_distance_sensor.readRange() / 10; //distance in mm
+
+        double water_level_L = (configuration.Tank_Height_cm - measurement_cm) * L_per_cm;
+        Serial.printf("debug %f, %f, %f, %f \n", configuration.Tank_Height_cm, measurement_cm, L_per_cm, current_status.water_level_L);
+        //limit level to 0
+        current_status.water_level_L = std::max<double>(0.0, water_level_L);
+
+        Serial.printf("Water level %f \n", current_status.water_level_L);
+    }
 }
+
 Ticker Tank_Level_Measurement(Tank_Level_Measurement_function,1000,0,MILLIS);
 
 //schedule water flow measurement every 5 second
@@ -98,6 +126,7 @@ void logic_function(void *parameter)
     //Start timing tasks
     Tank_Flow_Measurement.start();
     Tank_Level_Measurement.start();
+    Soil_Measurement.start();
     checkConnectivity.start();
 
     while (logic_run)
@@ -179,6 +208,7 @@ void logic_function(void *parameter)
         //handle all timing tasks events
         Tank_Level_Measurement.update();
         Tank_Flow_Measurement.update();
+        Soil_Measurement.update();
         //handle all buttons
         StartButton.update();
 
