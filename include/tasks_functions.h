@@ -38,14 +38,14 @@ void Soil_Sensors_Measurement_Function()
 {
     if(soil_sensor1_found)
     {
-        current_status.temperature_sensor1_C = soil_sensor1.getTemp();
-        current_status.moisture_sensor1_Percent = moisture_calc(soil_sensor1.touchRead(0));
+        current_status.temperature_sensor1_C = soil_sensor1->getTemp();
+        current_status.moisture_sensor1_Percent = moisture_calc(soil_sensor1->touchRead(0));
         Serial.printf("soil sensor 1 \nTemp: %f \n Moisture: %f \n ",current_status.temperature_sensor1_C,current_status.moisture_sensor1_Percent);
     }
     if(soil_sensor2_found)
     {
-        current_status.temperature_sensor2_C = soil_sensor2.getTemp();
-        current_status.moisture_sensor2_Percent = moisture_calc(soil_sensor2.touchRead(0));
+        current_status.temperature_sensor2_C = soil_sensor2->getTemp();
+        current_status.moisture_sensor2_Percent = moisture_calc(soil_sensor2->touchRead(0));
         Serial.printf("soil sensor 2 \nTemp: %f \n Moisture: %f \n ",current_status.temperature_sensor2_C,current_status.moisture_sensor2_Percent);
 
     }
@@ -62,7 +62,7 @@ void Tank_Level_Measurement_function()
         Config configuration = settings.get_Config();
         double L_per_cm = ((double)configuration.Tank_Volume / (double)configuration.Tank_Height_cm);
 
-        double measurement_cm = water_distance_sensor.readRange() / 10; //distance in mm
+        double measurement_cm = (water_distance_sensor->readRange() / 10.0) - 3.0; //distance in mm
 
         double water_level_L = (configuration.Tank_Height_cm - measurement_cm) * L_per_cm;
         Serial.printf("debug %f, %f, %f, %f \n", configuration.Tank_Height_cm, measurement_cm, L_per_cm, current_status.water_level_L);
@@ -104,8 +104,8 @@ void checkConnectivity_function()
 {
   Config configuration = settings.get_Config();
   Serial.println("Checking connectivity");
-  Serial.printf("Mode %d Connected %d, WifiStationName %s isEmpty? %d \n",WiFi.getMode(),WiFi.isConnected(),configuration.Wifi_Station_Name.c_str(),configuration.Wifi_Station_Name.isEmpty());
-  if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty()
+  Serial.printf("Mode %d Connected %d, WifiStationName %s isEmpty? %d \n",WiFi.getMode(),WiFi.isConnected(),configuration.Wifi_Station_Name,strlen(configuration.Wifi_Station_Name)>0);
+  if(configuration.Wifi_Station_Name && strlen(configuration.Wifi_Station_Name)
   &&(WiFi.getMode() == WIFI_MODE_STA && !WiFi.isConnected()))
     Status_LED_frequency_ms = 200;
   else 

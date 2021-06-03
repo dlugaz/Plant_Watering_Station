@@ -121,16 +121,16 @@ void handle_Networks()
 
   if (webServer.argName(0) == "AP_Name")
   {
-    configuration.Wifi_Station_Name = webServer.arg(0);
+    strncpy(configuration.Wifi_Station_Name, webServer.arg(0).c_str(), sizeof(configuration.Wifi_Station_Name));
     if (webServer.argName(1) == "psw")
-      configuration.Wifi_Station_Password = webServer.arg(1);
+      strncpy(configuration.Wifi_Station_Password, webServer.arg(1).c_str(), sizeof(configuration.Wifi_Station_Name));
     Serial.println("Saving WIFI settings");
 
     settings.save_settings(configuration);
   }
   if (webServer.hasArg("connect"))
   {
-    if (!configuration.Wifi_Station_Name.isEmpty())
+    if (strlen(configuration.Wifi_Station_Name)>0)
     {
       esp_restart();
     }
@@ -138,8 +138,8 @@ void handle_Networks()
 
   if (webServer.hasArg("forget"))
   {
-    configuration.Wifi_Station_Name = "";
-    configuration.Wifi_Station_Password = "";
+    configuration.Wifi_Station_Name[0] = '\0';
+    configuration.Wifi_Station_Password[0] = '\0';
 
     settings.save_settings(configuration);
   }
@@ -155,8 +155,8 @@ void handle_Networks()
   <button class="button type="submit" name="Scan">Skanuj</button>
   </form>
   )"
-  ,configuration.Wifi_Station_Name.c_str()
-  ,!configuration.Wifi_Station_Name.isEmpty() ?  //if there is saved station name
+  ,configuration.Wifi_Station_Name
+  ,strlen(configuration.Wifi_Station_Name)>0 ?  //if there is saved station name
   R"(
   <button class="button" type="submit" name="connect">Polacz</button><br>
   <button class="button type="submit" name="forget">Zapomnij</button><br>

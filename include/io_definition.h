@@ -13,9 +13,9 @@
 #define I2C_SCL 18
 #define MAX_DISTANCE 60
 
-Adafruit_seesaw soil_sensor1;
-Adafruit_seesaw soil_sensor2;
-Adafruit_VL53L0X water_distance_sensor;
+ Adafruit_seesaw* soil_sensor1;
+ Adafruit_seesaw* soil_sensor2;
+ Adafruit_VL53L0X* water_distance_sensor;
 volatile bool soil_sensor1_found, soil_sensor2_found, water_distance_sensor_found;
 
 void analogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255)

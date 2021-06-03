@@ -19,14 +19,14 @@ const char CRC_filename[] = "/CRC.txt";
 #include <mutex>
  struct Config
 {
-    tm Last_Watering_Timestamp;
-    IPAddress Device_Ip;
+    char Wifi_Station_Name [32];
+    char Wifi_Station_Password[32];
     float Tank_Volume;
     float Tank_Height_cm;
     float L_per_cm;
-    String Wifi_Station_Name;
-    String Wifi_Station_Password;
     Watering_Tasks tasks_array;
+    tm Last_Watering_Timestamp;
+    IPAddress Device_Ip;
 }; 
 class Settings
 {
@@ -140,5 +140,5 @@ public:
         memory_access.end();
     }
 };
- Settings settings;
+Settings settings;
 #endif // !INCLUDE_CONFIGURE_H

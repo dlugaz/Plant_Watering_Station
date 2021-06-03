@@ -42,16 +42,16 @@ void setup_Connectivity()
 
     if(WiFi.setHostname(hostname))Serial.printf("Set hostname to %s \n",hostname);
 
-    if(configuration.Wifi_Station_Name && !configuration.Wifi_Station_Name.isEmpty())
+    if(configuration.Wifi_Station_Name != nullptr && strlen(configuration.Wifi_Station_Name)>0)
     {
       Serial.println("Connecting to saved network:");
-      Serial.printf("%s \n",configuration.Wifi_Station_Name.c_str());
+      Serial.printf("%s \n",configuration.Wifi_Station_Name);
       wl_status_t Connection_Status = WL_IDLE_STATUS;
       int Connection_Retries = 3;
       while (Connection_Status!= WL_CONNECTED && Connection_Retries > 0)
       {
         Serial.println("Connecting");
-         Connection_Status = WiFi.begin(configuration.Wifi_Station_Name.c_str(),configuration.Wifi_Station_Password.c_str());
+         Connection_Status = WiFi.begin(configuration.Wifi_Station_Name,configuration.Wifi_Station_Password);
          Connection_Retries--;
          WiFi.waitForConnectResult();
          delay(5000);
@@ -79,23 +79,23 @@ void setup_Connectivity()
 #define SOIL_SENSOR1_ADDRESS 54U
 #define SOIL_SENSOR2_ADDRESS 55U
 
-Adafruit_seesaw setup_soil_sensor(uint8_t address)
+Adafruit_seesaw* setup_soil_sensor(uint8_t address)
 {
   Serial.println("Soil sensor init");
-  Adafruit_seesaw sensor;
-  sensor.begin(address);
-  Serial.printf("Test soil sensor \nTemp: %f \nMoisture: %d \n ",sensor.getTemp(),sensor.touchRead(0));
+  Adafruit_seesaw* sensor = new Adafruit_seesaw(&Wire);
+  sensor->begin(address);
+  Serial.printf("Test soil sensor \nTemp: %f \nMoisture: %d \n ",sensor->getTemp(),sensor->touchRead(0));
   return sensor;
 }
 
 #define WATER_LEVEL_SENSOR_ADDRESS 41U
-Adafruit_VL53L0X setup_water_level_sensor()
+Adafruit_VL53L0X* setup_water_level_sensor()
 {
     //Initialize tank level sensor
     Serial.println("Water Level Sensor Init");
-    Adafruit_VL53L0X sensor;
-    sensor.begin(WATER_LEVEL_SENSOR_ADDRESS);
-    Serial.printf("Test Distance : %d \n",sensor.readRange());
+    Adafruit_VL53L0X* sensor = new Adafruit_VL53L0X();
+    sensor->begin(WATER_LEVEL_SENSOR_ADDRESS);
+    Serial.printf("Test Distance : %d \n",sensor->readRange());
     return sensor;
 }
 
